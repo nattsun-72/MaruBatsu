@@ -1,0 +1,31 @@
+## Visual Studio / C++ project
+
+# VS temp files
+.vs/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Bb]uild/
+bin/
+obj/
+
+# Build artifacts
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.tlog
+*.log
+
+# VS user-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Others

@@ -1,0 +1,154 @@
+<!-- ================= 第5章 ================= -->
+<h1 id="ch5">第5章　アビリティシステム</h1>
+
+<div class="lead">
+第4章のフックを実際に「実装する側」がアビリティです。本章では、全アビリティの共通基底、
+報酬抽選プール、そしてプレイヤーが獲得する6種のアビリティを1つずつ解説します。
+各アビリティは「どのフックを、どう実装するか」の具体例になっています。
+</div>
+
+<h2>5.1　アビリティ基底クラス (ability.h)</h2>
+<p>
+<code>Ability</code> は全アビリティの共通基底です。表示情報（名前・説明・レアリティ）と、
+2系統の振る舞いを定義します。
+</p>
+<h3>パッシブ系とアクティブ系</h3>
+<ul>
+  <li><strong>パッシブ系</strong> ― フックを実装してルールを書き換える。
+      <code>RegisterTo(registry)</code> で自身をレジストリに登録します。
+      熟考・氷駒・二手打ち・盤面拡張がこれです。</li>
+  <li><strong>アクティブ系（任意発動）</strong> ― <code>activatable = true</code> とし、
+      ゲーム中にボタンとして表示され、クリックで <code>Activate</code> が呼ばれる。
+      <code>CanActivate</code>（発動可否）と <code>ChargesLeft</code>（残り回数）も持ちます。
+      集中がこれです。</li>
+</ul>
+<p>
+1つのアビリティがパッシブとアクティブを兼ねることも可能ですが、プロト版の6種は
+どちらか一方です。アクティブ専用のアビリティは、フック登録が不要なので
+<code>RegisterTo</code> を空実装にします。
+</p>
+<h3>shared_from_this とフック登録</h3>
+<p>
+<code>Ability</code> は <code>std::enable_shared_from_this</code> を継承しています。
+アビリティは「<code>Ability</code> としての顔」と「フック（例 <code>ITurnTimeProvider</code>）
+としての顔」を多重継承で併せ持つため、登録時には自分自身を<strong>フック型の
+<code>shared_ptr</code> として</strong>レジストリへ渡す必要があります。
+<code>shared_from_this()</code> で自分の <code>shared_ptr</code> を取得し、
+<code>dynamic_pointer_cast</code> で目的のフック型に変換して登録する、という手順を
+各アビリティの <code>RegisterTo</code> が踏みます。
+</p>
+<h3>レアリティ</h3>
+<p>
+<code>enum class Rarity</code> は コモン／レア／エピック／レジェンダリー／呪い の5段階。
+報酬カードの枠色や、将来の抽選重み付けに使います。
+</p>
+<!--CODE:game/ability/ability.h-->
+
+<h2>5.2　抽選プール (ability_pool)</h2>
+<p>
+<code>AbilityPool</code> は、報酬画面の3択を生成するための候補リストです。
+</p>
+<ul>
+  <li><code>CreateAll()</code> ― 報酬候補となる全アビリティを、<strong>毎回新規インスタンス</strong>で
+      生成して返す。インスタンスを使い回さないのは、アビリティが
+      <code>chained</code> やチャージなどの状態を持つためです。</li>
+  <li><code>PickRandom(count)</code> ― 全候補をシャッフルし、先頭 <code>count</code> 個を返す
+      （重複なし抽選）。報酬画面はこれで3つ取り出します。</li>
+</ul>
+<p>
+プロト版は全候補を等確率で抽選しますが、α版以降ではレアリティ重み付き抽選へ
+拡張する想定です。その差し替えも、この <code>PickRandom</code> 1か所で済みます。
+</p>
+<!--CODE:game/ability/ability_pool.h-->
+<!--CODE:game/ability/ability_pool.cpp-->
+
+<h2>5.3　各アビリティの実装</h2>
+
+<h3>熟考 (ContemplationAbility) ― 思考時間 +30秒</h3>
+<p>
+<code>ITurnTimeProvider</code> を実装するパッシブアビリティです。<code>RegisterTo</code> で
+<code>SetTurnTimeProvider</code> を呼び、戻り値（旧実装）を <code>chained</code> に保持します。
+<code>GetTurnTimeSeconds</code> は、対象が <code>targetSide</code> なら
+「<code>chained</code> の結果 ＋ <code>bonusSeconds</code>」を返し、それ以外は
+<code>chained</code> の結果をそのまま返します。第4章で図解したチェインの典型例です。
+</p>
+<p>
+このクラスは「余裕」の基底も兼ねており、加算量を変えるだけで派生が作れるよう、
+<code>bonusSeconds</code> をメンバ変数にしてあります。
+</p>
+<!--CODE:game/ability/abilities/contemplation.h-->
+<!--CODE:game/ability/abilities/contemplation.cpp-->
+
+<h3>余裕 (MarginAbility) ― 思考時間 +60秒</h3>
+<p>
+<code>ContemplationAbility</code> を継承し、コンストラクタで名前・説明・レアリティ・
+<code>bonusSeconds</code> を上書きするだけの派生クラスです。ロジックは一切書きません。
+「基底クラスのパラメータ違い」で新アビリティを増やせる、という設計の好例です。
+</p>
+<!--CODE:game/ability/abilities/margin.h-->
+<!--CODE:game/ability/abilities/margin.cpp-->
+
+<h3>集中 (FocusAbility) ― 任意発動：このターン +2分</h3>
+<p>
+唯一の<strong>アクティブ系</strong>アビリティです。<code>activatable = true</code> とし、
+フックは実装しません（<code>RegisterTo</code> は空）。代わりに、
+</p>
+<ul>
+  <li><code>Activate(state)</code> ― <code>state.remainingTime</code> に <code>bonusSeconds</code>（120秒）を
+      加算し、<code>charges</code> を1減らす。</li>
+  <li><code>CanActivate(state)</code> ― <code>charges &gt; 0</code> なら発動可。</li>
+  <li><code>ChargesLeft()</code> ― 残りチャージ数を返す（UIの回数表示に使う）。</li>
+</ul>
+<p>
+パッシブが「常に効くルール変更」なのに対し、アクティブは「プレイヤーが任意の
+タイミングで切る、回数制限つきの効果」です。ゲームシーンのHUDがこのボタンを描画し、
+クリックで <code>Activate</code> を呼びます（第10章）。
+</p>
+<!--CODE:game/ability/abilities/focus.h-->
+<!--CODE:game/ability/abilities/focus.cpp-->
+
+<h3>氷駒 (IceTileAbility) ― 置いた駒が1マス滑る</h3>
+<p>
+<code>IPlacementHandler</code> を実装するパッシブアビリティです。<code>RegisterTo</code> では
+<code>AddPlacementHandler</code> を使います（設置イベントは複数登録できる追加式フック）。
+</p>
+<p>
+<code>OnPlace</code> は、置かれた駒が自陣営なら、その駒を滑走方向へ1マス滑らせ、
+移動を <code>animPhases</code> に1フェーズとして記録します。注目すべきは
+<strong>重ね掛け対応</strong>です。氷駒を複数所持すると <code>OnPlace</code> が所持数ぶん
+呼ばれます。各回で「設置マスから滑走方向へ走査して駒の現在位置を特定 → そこから
+1マス滑らせる」ことで、先に滑った結果を引き継ぎ、合計で所持数ぶんのマスを滑ります。
+複数インスタンスを特別にマージする仕組みを持たず、各インスタンスが素直に協調動作する
+のがうまい点です。
+</p>
+<!--CODE:game/ability/abilities/ice_tile.h-->
+<!--CODE:game/ability/abilities/ice_tile.cpp-->
+
+<h3>二手打ち (TwoHandsAbility) ― 1ターンに2回置ける</h3>
+<p>
+<code>ITurnHandler</code> を実装するパッシブアビリティです。<code>ITurnHandler</code> は
+単一フックなので、<code>SetTurnHandler</code> でチェインします。
+<code>GetPlacementCount</code> は、対象陣営なら2、それ以外は <code>chained</code> へ委譲。
+<code>OnTurnStart</code> / <code>OnTurnEnd</code> もチェイン先へ委譲するだけです。
+</p>
+<p>
+「自分の関心事（着手数）だけ変え、それ以外はチェイン先にそのまま流す」という、
+チェイン型フックの定石どおりの実装です。
+</p>
+<!--CODE:game/ability/abilities/two_hands.h-->
+<!--CODE:game/ability/abilities/two_hands.cpp-->
+
+<h3>盤面拡張 (BoardExpandAbility) ― 盤面を3×3から4×4へ</h3>
+<p>
+<code>IBoardModifier</code> を実装するパッシブアビリティです。<code>GetBoardSize</code> は
+<code>chained</code> が決めたサイズを基準に、自分の目標サイズ（4×4）との<strong>大きい方</strong>を
+採用します（縮小はしない）。試合開始時にゲームシーンがこのフックを呼び、
+得られたサイズで <code>Board::Resize</code> します。
+</p>
+<p>
+盤面が広がっても勝利条件は3並びのままなので、勝ち筋（フォーク）が大幅に増える
+強力なエピックアビリティになります。盤面サイズという「構造」を変える効果も、
+他と同じフックの枠組みで表現できることを示す好例です。
+</p>
+<!--CODE:game/ability/abilities/board_expand.h-->
+<!--CODE:game/ability/abilities/board_expand.cpp-->

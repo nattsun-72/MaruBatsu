@@ -1,0 +1,121 @@
+<!-- ================= 第3章 ================= -->
+<h1 id="ch3">第3章　盤面システム</h1>
+
+<div class="lead">
+〇×ゲームの「土俵」である盤面を扱うシステムです。盤面データそのもの、駒を動かす
+スライド操作、勝利条件の走査、そして汎用の衝突判定を解説します。
+ここはアビリティやボスギミックから繰り返し呼ばれる土台になります。
+</div>
+
+<h2>3.1　盤面データ (board)</h2>
+<p>
+<code>Board</code> クラスは、<code>width × height</code> のマス目を保持します。
+内部表現は<strong>1次元の <code>std::vector&lt;Piece&gt;</code></strong> で、座標 <code>(x,y)</code> は
+<code>index = y * width + x</code> で1次元インデックスに対応づけます（<code>Index()</code>）。
+2次元配列ではなく1次元 <code>vector</code> にしているのは、サイズ可変（<code>Resize</code>）を
+素直に扱うためです。
+</p>
+<h3>境界外アクセスの安全化</h3>
+<p>
+<code>Board</code> の設計でとくに大事なのは、<strong><code>Get</code> と <code>Set</code> が
+盤外座標を安全に扱う</strong>点です。
+</p>
+<ul>
+  <li><code>Get(x,y)</code> ― 盤外なら <code>Piece::Empty</code> を返す。</li>
+  <li><code>Set(x,y,p)</code> ― 盤外なら何もしない（無視）。</li>
+</ul>
+<p>
+この「盤外＝空マス扱い」のおかげで、勝利条件の走査やスライド処理が、
+わざわざ境界チェックを書かなくても <code>Board::Get</code> を呼ぶだけで安全に書けます。
+たとえば後述の <code>win_check</code> は「1マス手前が同色か」を <code>Get(x-dx,y-dy)</code> で
+調べますが、手前が盤外でも <code>Empty</code> が返るので破綻しません。境界処理を
+<code>Board</code> の中に1か所だけ閉じ込める、という考え方です。
+</p>
+<h3>サイズ変更 (Resize)</h3>
+<p>
+<code>Resize(w,h)</code> は盤面サイズを変えて全マスを空に戻します。これは「盤面拡張」
+アビリティ（第5章）が、試合開始時に3×3を4×4へ広げるために使います。
+盤面サイズを固定値でハードコードせず、最初から可変にしてあるのがポイントです。
+</p>
+<!--CODE:game/board.h-->
+<!--CODE:game/board.cpp-->
+
+<h2>3.2　盤面操作 ― スライド (board_ops)</h2>
+<p>
+<code>BoardOps</code> 名前空間は、駒を移動させる「純粋な盤面操作」をまとめます。
+これらは氷盤（ボスギミック）や氷駒（アビリティ）から共通で呼ばれます。
+</p>
+<h3>移動の記録 ― Move / MoveList</h3>
+<p>
+スライド関数は、盤面を書き換えるだけでなく「<strong>どの駒がどこからどこへ動いたか</strong>」を
+記録できます。これが <code>BoardOps::Move</code>（from座標・to座標・駒種）であり、
+その集まりが <code>MoveList</code> です。<strong>1つの <code>MoveList</code> ＝ 同時に起きる移動の集合
+＝ アニメーションの1フェーズ</strong>、という対応になっています。盤面を一瞬で書き換えても、
+この記録があれば「駒が滑っていく様子」を後からアニメーション再生できます（第10章）。
+</p>
+<h3>SlideAll ― 全駒スライド（2048タイル風）</h3>
+<p>
+<code>SlideAll(board, dir, outMoves)</code> は、盤上の全ての駒を指定方向の端まで
+詰めます。アルゴリズムは行（または列）ごとに次の3段階です。
+</p>
+<ol>
+  <li>そのライン上の非空マスの駒を、<strong>出現順を保ったまま</strong>収集する。</li>
+  <li>ラインを一旦すべて空にする。</li>
+  <li>端から詰め直して再配置し、実際に位置が変わった駒を <code>outMoves</code> に記録する。</li>
+</ol>
+<p>
+「左右スライドなら行ごと・上下スライドなら列ごと」「右下方向なら末尾寄せ・
+左上方向なら先頭寄せ」を、<code>horizontal</code> と <code>toEnd</code> の2つの真偽値と
+<code>cellAt</code> ラムダで切り替えています。4方向それぞれに別ループを書かず、
+1つのロジックでまとめているのが読みどころです。
+</p>
+<h3>SlideOne ― 1マスだけ滑らせる</h3>
+<p>
+<code>SlideOne</code> は指定マスの駒を1マスだけ動かします。滑り先が
+<strong>盤内かつ空マス</strong>のときのみ移動し、移動できたかを <code>bool</code> で返します。
+氷駒アビリティ（駒1個を1マス滑らせる）が、これを所持数ぶん繰り返して使います。
+</p>
+<!--CODE:game/board_ops.h-->
+<!--CODE:game/board_ops.cpp-->
+
+<h2>3.3　勝利条件の走査 (win_check)</h2>
+<p>
+<code>WinCheck</code> 名前空間は、「縦・横・斜めに駒が並んでいるか」という<strong>純粋な走査
+ロジック</strong>を提供します。勝利条件フックのデフォルト実装やAIの先読みが、これを利用します。
+</p>
+<h3>HasLine ― N並びの判定</h3>
+<p>
+<code>HasLine(board, player, required)</code> は、<code>player</code> の駒が
+<code>required</code> 個（既定3）連続している箇所があるかを返します。実装の要点は2つです。
+</p>
+<ul>
+  <li><strong>走査方向は4つだけ</strong>：右・下・右下・右上。左・上・左下・左上は
+      逆走査になるだけなので省略できます。</li>
+  <li><strong>始点からのみ数える</strong>：「1マス手前が同色なら、そのラインは別の始点で
+      数えるのでスキップ」という枝刈りを入れ、同じラインを重複して数えません。</li>
+</ul>
+<p>
+盤面サイズに依存しない汎用実装なので、3×3でも4×4でも、また将来「4並びで勝利」に
+ルールが変わっても、<code>required</code> を変えるだけで対応できます。
+</p>
+<h3>CountMaxLine ― 最長連続数</h3>
+<p>
+<code>CountMaxLine</code> は、ある陣営の「最も長く繋がっている駒数」を返します。
+AIが盤面を評価する材料などに使えます。
+</p>
+<!--CODE:game/win_check.h-->
+<!--CODE:game/win_check.cpp-->
+
+<h2>3.4　衝突判定 (collision)</h2>
+<p>
+<code>collision</code> は、円・矩形（AABB）同士の重なり判定と、点の内外判定を提供する
+<strong>汎用2Dユーティリティ</strong>です。Zankuuから流用し、2D向けにスリム化したモジュールです。
+</p>
+<p>
+本作のUIヒット判定（ボタンやカードのクリック）は、実際にはこのモジュールを介さず
+各シーン側で直接矩形比較していますが、汎用部品として用意されています。
+円判定が「距離の二乗で比較して <code>sqrt</code> を避ける」など、2D衝突判定の
+基本テクニックを学ぶ題材にもなります。
+</p>
+<!--CODE:game/collision.h-->
+<!--CODE:game/collision.cpp-->

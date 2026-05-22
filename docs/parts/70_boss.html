@@ -1,0 +1,91 @@
+<!-- ================= 第6章 ================= -->
+<h1 id="ch6">第6章　ボスシステム</h1>
+
+<div class="lead">
+本作の敵は単なるAIではなく、固有の「ギミック」を持つボスです。本章では、ボスの抽象化、
+プロト版の唯一のボス「氷盤の支配者」、そしてそのギミック「氷盤」を解説します。
+ギミックがアビリティと同じフックの上に乗っている点に注目してください。
+</div>
+
+<h2>6.1　ボス基底クラス (boss.h)</h2>
+<p>
+<code>Boss</code> は、ステージごとの敵を表す抽象基底クラスです。表示情報（名前・説明・
+難易度★）に加えて、2つの抽象メソッドを持ちます。
+</p>
+<ul>
+  <li><strong><code>GetBossAbilities()</code></strong> ― ボス戦中に登録するアビリティ群を返す。
+      これがボスのギミック本体（ボス側強化版）です。</li>
+  <li><strong><code>GetRewardAbility()</code></strong> ― 撃破時にプレイヤーが獲得する
+      アビリティ（弱化版）を返す。</li>
+</ul>
+<div class="key">
+<b>ボスギミック ＝ アビリティ</b>
+本設計の妙は、ボスのギミックが第5章のアビリティと<strong>まったく同じ仕組み</strong>で
+できていることです。ギミックも <code>Ability</code> を継承しフックを実装します。
+ボス戦が始まると、プレイヤーのアビリティとボスのギミックが、同じ
+<code>AbilityRegistry</code> に一緒に登録されます。ゲーム本体から見れば、
+両者の区別はありません。「敵の特殊ルール」と「自分の特殊ルール」を別系統で
+作らずに済む、という大きな利点があります。
+</div>
+<p>
+さらに、撃破報酬がギミックの弱化版である点も特徴です。ボス1「氷盤の支配者」の
+ギミックは「全駒が滑る」ですが、撃破報酬は「自分の駒だけ1マス滑る」氷駒です。
+プレイヤーは倒したボスの力を一部受け継ぐ、というローグライトらしい体験になります。
+</p>
+<!--CODE:game/boss/boss.h-->
+
+<h2>6.2　氷盤の支配者 (ice_board_boss)</h2>
+<p>
+<code>IceBoardBoss</code> は <code>Boss</code> を継承する、プロト版唯一の具体ボスです。
+難易度★1。実装はごく短く、コンストラクタで名前・説明・難易度を設定し、
+2つの抽象メソッドを次のように実装するだけです。
+</p>
+<ul>
+  <li><code>GetBossAbilities()</code> → <code>BossIceSlideAbility</code>（氷盤）を返す。</li>
+  <li><code>GetRewardAbility()</code> → <code>IceTileAbility</code>（氷駒）を返す。</li>
+</ul>
+<p>
+新しいボスを追加するときは、この <code>IceBoardBoss</code> と同じ形で
+<code>Boss</code> の派生クラスを書き、固有のギミックアビリティを用意するだけです。
+プロト版ではゲームシーンが固定でこのボスを生成しますが、α版では
+ボス番号に応じて生成を切り替える「ボスマネージャ」へ拡張する想定です。
+</p>
+<!--CODE:game/boss/ice_board_boss.h-->
+<!--CODE:game/boss/ice_board_boss.cpp-->
+
+<h2>6.3　ボスギミック「氷盤」 (boss_ice_slide)</h2>
+<p>
+<code>BossIceSlideAbility</code> が、氷盤の支配者のギミック本体です。
+このアビリティは<strong>2つのフックを同時に実装</strong>します。
+</p>
+<table>
+  <tr><th>実装するフック</th><th>役割</th></tr>
+  <tr><td><code>IPlacementHandler</code></td>
+      <td>駒が置かれるたびに、盤上の全駒を <code>currentDir</code> 方向へスライドさせる
+          （<code>BoardOps::SlideAll</code>）。移動は <code>animPhases</code> に記録。</td></tr>
+  <tr><td><code>ITurnHandler</code></td>
+      <td>着手数自体は変えず（チェイン先へ委譲）、<code>OnTurnStart</code> で
+          スライド方向 <code>currentDir</code> を毎ターン抽選し直す。</td></tr>
+</table>
+<p>
+設置イベント（<code>IPlacementHandler</code>）は追加式フックなので
+<code>AddPlacementHandler</code> で登録します。ターン処理（<code>ITurnHandler</code>）は
+単一フックなので <code>SetTurnHandler</code> でチェインし、旧実装を
+<code>chainedTurn</code> に保持します。<code>GetPlacementCount</code> や
+<code>OnTurnEnd</code> は <code>chainedTurn</code> へそのまま委譲し、
+氷盤は「方向の抽選」と「全駒スライド」という自分の関心事だけを担当します。
+</p>
+<p>
+スライド方向を毎ターン変えることで、プレイヤーは「次にどちらへ滑るか」を読みながら
+着手する必要が生まれ、単純な〇×に駆け引きが加わります。次にどちらへ滑るかは、
+ゲームシーンが盤面の縁にシェブロン矢印で可視化します（第10章）。
+</p>
+<div class="note">
+<b>登録順との関係</b>
+ゲームシーンの <code>LoadBoss</code> は、プレイヤーのアビリティを先に、ボスの
+ギミックを後に登録します。これにより設置イベントは「プレイヤー効果（氷駒など）→
+ボス効果（氷盤）」の順で発火します。プレイヤーが置いた駒がまず氷駒で滑り、その後に
+氷盤で盤面全体が滑る、という意図した順序が、登録順だけで実現されます。
+</div>
+<!--CODE:game/ability/abilities/boss_ice_slide.h-->
+<!--CODE:game/ability/abilities/boss_ice_slide.cpp-->

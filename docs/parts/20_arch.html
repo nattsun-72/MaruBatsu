@@ -1,0 +1,129 @@
+<!-- ================= 第1章 ================= -->
+<h1 id="ch1">第1章　全体アーキテクチャ</h1>
+
+<div class="lead">
+本章では、アプリケーション全体の骨格を概観します。基盤層とゲーム層がどう接続され、
+1フレームがどう処理され、3つのシーン（タイトル・ゲーム・報酬）がどう切り替わるかを
+押さえます。個々のゲームロジックは第2章以降で詳述します。
+</div>
+
+<h2>1.1　レイヤ構成 ― 基盤層とゲーム層</h2>
+<p>
+このアプリは大きく2層に分かれます。下が<strong>基盤層</strong>（Zankuu由来の汎用機能）、
+上が<strong>ゲーム層</strong>（本書が解説する〇×ローグライト固有のコード）です。
+</p>
+<div class="flow">┌─────────────────────────────────────────────┐
+│  ゲーム層 (game/ + main.cpp)                          │
+│   シーン（タイトル / ゲーム / 報酬）                   │
+│   盤面・フック・アビリティ・ボス・AI・UI                 │
+├─────────────────────────────────────────────┤
+│  基盤層 (Zankuu由来)                                 │
+│   ウィンドウ / Direct3D11 / スプライト描画 / 入力       │
+│   サウンド / タイマー / フェード                        │
+└─────────────────────────────────────────────┘</div>
+<p>
+ゲーム層は基盤層のAPIを<strong>呼び出すだけ</strong>で、基盤層がゲーム層を直接知ることは
+ありません（依存は一方向）。この分離のおかげで、ゲーム層を一から書き直しても基盤層は
+そのまま使えます。本書の「ゼロから作る」とは、この上半分を組み上げることを指します。
+</p>
+<p>
+ほとんどの基盤モジュールは
+<code>○○_Initialize()</code> /
+<code>○○_Update()</code> /
+<code>○○_Draw()</code> /
+<code>○○_Finalize()</code>
+という統一された関数群を公開します。ゲーム層のシーンやサブシステムも、この命名規則に
+ならって作られています。「初期化・更新・描画・終了」の4点セットで考える、という方針を
+プロジェクト全体で一貫させているわけです。
+</p>
+
+<h2>1.2　メインループ (main.cpp)</h2>
+<p>
+<code>main.cpp</code> は唯一のエントリーポイントであり、基盤層とゲーム層を「接続する配線」です。
+役割は3つに集約されます。
+</p>
+<ol>
+  <li><strong>初期化</strong>：基盤層の各サブシステムを正しい順序で立ち上げ、最後にシーンを初期化する。</li>
+  <li><strong>メインループ</strong>：毎フレーム「更新 → 描画 → 表示 → シーン遷移確定」を繰り返す。</li>
+  <li><strong>終了処理</strong>：初期化と<strong>逆順</strong>でサブシステムを片付ける。</li>
+</ol>
+<p>
+初期化の順序には依存関係があります。たとえばスプライト描画やフォントアトラスは
+Direct3Dデバイスを必要とするため、<code>Direct3D_Initialize</code> の後でなければ
+初期化できません。逆に終了処理は依存される側を後に片付けるため、初期化と逆順にします。
+</p>
+<p>メインループ（<code>WM_QUIT</code> まで回る <code>do-while</code>）の1フレームは次の流れです。</p>
+<div class="flow">PeekMessage でOSメッセージあり? ──Yes──→ Translate/Dispatch（ウィンドウ処理）
+        │No
+        ▼
+  [更新フェーズ]
+    SystemTimer から経過時間を取得
+    KeyLogger_Update / PadLogger_Update   ← 入力スナップショット更新
+    Scene_Update(elapsed_time)            ← 現在シーンの更新
+    SpriteAnim_Update / Fade_Update
+  [描画フェーズ]
+    Scene_Draw()                          ← 現在シーンの描画
+    Fade_Draw()                           ← フェードを最前面に重ねる
+    （DEBUGビルドのみ）FPS表示
+    Direct3D_Present()                    ← バックバッファを画面へ（VSync待ち）
+    Scene_Refresh()                       ← 予約されたシーン遷移をここで確定</div>
+<p>
+ポイントは、<strong>シーン遷移の確定（<code>Scene_Refresh</code>）をフレーム末尾で行う</strong>ことです。
+更新や描画の途中でシーンを切り替えてしまうと、「更新は旧シーン・描画は新シーン」のような
+不整合が起きます。そこで遷移は「予約」だけにとどめ、1フレームの処理を完全に終えてから
+切り替える設計になっています（詳細は次節）。
+</p>
+<p>
+フレームレートは <code>Direct3D_Present()</code> の内部でVSync（垂直同期）に同期するため、
+モニタのリフレッシュレートに追従します。経過時間 <code>elapsed_time</code> は
+<code>SystemTimer</code> から取得した実測値で、これを各 <code>Update</code> に渡すことで、
+フレームレートに依存しない時間進行（タイマー消費・アニメーション）を実現します。
+</p>
+<!--CODE:main.cpp-->
+
+<h2>1.3　シーン管理 (scene)</h2>
+<p>
+本作には3つのシーンがあります。<code>enum class Scene</code> で表され、
+同時に有効なのは常に1つだけです。
+</p>
+<table>
+  <tr><th>シーン</th><th>役割</th></tr>
+  <tr><td><code>Scene::TITLE</code></td><td>タイトル画面。入力でゲーム本編へ。</td></tr>
+  <tr><td><code>Scene::GAME</code></td><td>ボス戦本編。盤面プレイ。</td></tr>
+  <tr><td><code>Scene::REWARD</code></td><td>ボス撃破後の報酬（アビリティ3択）画面。</td></tr>
+</table>
+<p>
+<code>scene.cpp</code> は、現在シーン <code>g_Scene</code> と、次フレームの遷移先
+<code>g_SceneNext</code> の2つの変数を持ちます。<code>Scene_Update</code> /
+<code>Scene_Draw</code> は <code>g_Scene</code> を見て、対応するシーンの関数
+（<code>Title_Update</code>、<code>Game_Draw</code> など）へ <code>switch</code> で振り分けます。
+これは「ポリモーフィズムを使わない素朴なディスパッチ」で、シーン数が少ないうちは
+これで十分シンプルに保てます。
+</p>
+<h3>遷移は「予約 → 確定」の2段階</h3>
+<p>遷移の流れは次の通りです。</p>
+<div class="flow">どこかで Scene_Change(Scene::GAME) を呼ぶ
+   → g_SceneNext = GAME（予約するだけ。まだ切り替わらない）
+
+フレーム末尾で Scene_Refresh()
+   → g_Scene != g_SceneNext なら:
+        SoundManager_StopAll()   旧シーンの音を止める
+        Scene_Finalize()         旧シーンの終了処理
+        g_Scene = g_SceneNext    切り替え
+        Scene_Initialize()       新シーンの初期化</div>
+<p>
+この2段階により、シーンの <code>Finalize</code> と次シーンの <code>Initialize</code> が
+必ずフレームの境界で実行されることが保証されます。<code>Game_Update</code> の中で
+<code>Scene_Change(Scene::REWARD)</code> を呼んでも、その瞬間にゲームシーンの後片付けが
+走ることはなく、安全です。
+</p>
+<div class="note">
+<b>描画前のレンダーステート設定</b>
+<code>Scene_Draw</code> は各シーンの描画に先立ち、バックバッファをレンダーターゲットに
+設定し、深度テストを無効化（2Dなので不要）、アルファブレンドを有効化、
+<code>Sprite_Begin()</code> を呼びます。各シーンはこの「2D描画の準備が済んだ状態」を
+前提に描画コードを書けます。
+</p>
+</div>
+<!--CODE:game/scene/scene.h-->
+<!--CODE:game/scene/scene.cpp-->

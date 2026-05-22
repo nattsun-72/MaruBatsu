@@ -1,0 +1,80 @@
+<!-- ================= 第9章 ================= -->
+<h1 id="ch9">第9章　ラン進行とシーン</h1>
+
+<div class="lead">
+1回の挑戦（ラン）を通じてシーンをまたいで共有される状態と、タイトル・報酬の2シーンを
+解説します。中核のゲームシーンは規模が大きいため、独立した第10章で扱います。
+</div>
+
+<h2>9.1　ラン状態 (run_state)</h2>
+<p>
+<code>RunState</code> 名前空間は、「タイトルから始まり複数のボス戦を続ける1回の挑戦」の
+進行状態を保持します。シーンは切り替わるたびに <code>Finalize</code> / <code>Initialize</code> され、
+ローカル変数は失われます。そこで、シーンをまたいで残すべき情報をここに集約します。
+</p>
+<table>
+  <tr><th>状態</th><th>意味</th></tr>
+  <tr><td><code>PlayerAbilities()</code></td><td>プレイヤーの所持アビリティ一覧。ランを通じて累積。</td></tr>
+  <tr><td><code>RewardChoices()</code></td><td>報酬画面で提示中の3択アビリティ。</td></tr>
+  <tr><td><code>CurrentBossIndex()</code></td><td>現在挑戦中のボス番号（0＝ボス1）。</td></tr>
+</table>
+<p>関数は3つです。</p>
+<ul>
+  <li><code>ResetRun()</code> ― 所持アビリティ・報酬候補・ボス進行をすべて初期化。
+      タイトルから新しいランを始めるときに呼びます。</li>
+  <li><code>GenerateRewardChoices()</code> ― <code>AbilityPool::PickRandom(3)</code> で
+      報酬の3択を抽選します。</li>
+  <li><code>IncrementBoss()</code> ― ボス番号を1つ進めます（ボス撃破時）。</li>
+</ul>
+<p>
+プロト版ではシンプルな名前空間APIですが、α版ではこれらを <code>RunManager</code>
+クラスへ統合する想定です。「シーン間で共有する状態は1か所にまとめる」という方針を
+示すモジュールです。
+</p>
+<!--CODE:game/run_state.h-->
+<!--CODE:game/run_state.cpp-->
+
+<h2>9.2　タイトルシーン (title)</h2>
+<p>
+タイトルシーンは、ロゴと点滅プロンプトを表示し、入力で本編へ遷移するだけの
+軽量なシーンです。<code>Title_Update</code> の要点は次の通りです。
+</p>
+<ul>
+  <li>点滅プロンプト用に経過時間を積算する。</li>
+  <li>スペース／Enter／左クリックのいずれかで、<code>RunState::ResetRun()</code> を
+      呼んでラン状態を初期化し、<code>Scene_Change(Scene::GAME)</code> で本編へ遷移を予約する。</li>
+</ul>
+<p>
+<code>Title_Draw</code> は、背景・タイトルロゴ・サブタイトルを描き、開始プロンプトを
+一定周期で点滅させます。図形とテキストだけで構成され、第8章の描画モジュールの
+最初の利用例になります。
+</p>
+<!--CODE:game/scene/title.h-->
+<!--CODE:game/scene/title.cpp-->
+
+<h2>9.3　報酬シーン (reward)</h2>
+<p>
+報酬シーンは、ボス撃破後に3枚のカードからアビリティを1つ選ばせる画面です。
+ゲーム体験のローグライト性を担う重要なシーンです。
+</p>
+<h3>更新 ― ホバーと選択</h3>
+<p>
+<code>Reward_Update</code> は、マウス座標が3枚のカードのどれに乗っているかを判定して
+<code>g_HoverIndex</code> に記録し、左クリックで選択を確定します。確定すると、
+選んだアビリティを <code>RunState::PlayerAbilities()</code> へ追加し、報酬候補をクリアして
+<code>Scene::GAME</code> へ戻ります。次のボス戦が始まります。
+</p>
+<h3>描画 ― レアリティ別のカード</h3>
+<p>
+<code>Reward_Draw</code> は、カードを横並びに中央寄せで描きます。各カードは、
+レアリティ色の縁取り・本体・レアリティ表記・アビリティ名・説明文で構成されます。
+ホバー中のカードは本体色が明るくなります。カードのレイアウト計算
+（<code>CardOriginX</code> / <code>CardOriginY</code>）は更新と描画で共有され、
+ホバー判定と描画位置が必ず一致するようにしています。
+</p>
+<p>
+このカードUIの作り（横並び・レアリティ色・ホバー）は、第10章のアビリティ履歴
+ポップアップでも同じ発想で再利用されます。
+</p>
+<!--CODE:game/scene/reward.h-->
+<!--CODE:game/scene/reward.cpp-->

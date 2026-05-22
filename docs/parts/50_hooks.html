@@ -1,0 +1,165 @@
+<!-- ================= 第4章 ================= -->
+<h1 id="ch4">第4章　フック設計 ― 本プロジェクトの心臓部</h1>
+
+<div class="lead">
+本章は本書で最も重要です。「ゲームのルールそのものを差し替え可能にする」フック設計を
+解説します。この仕組みがあるからこそ、アビリティでルールが書き換わるローグライトが
+無理なく成立します。逆に、ここを後付けしようとすると全面的な作り直しになります。
+</div>
+
+<h2>4.1　なぜフックなのか</h2>
+<p>
+普通に〇×ゲームを作るなら、勝利判定は「3並びがあるか」と直接書き、思考時間は
+「180秒固定」と直接書くでしょう。しかし本作はローグライトです。アビリティによって
+次のようなことが起こります。
+</p>
+<ul>
+  <li>思考時間が +30秒される（熟考）／ −90秒される（呪い系）</li>
+  <li>1ターンに2回置けるようになる（二手打ち）</li>
+  <li>盤面が3×3から4×4へ広がる（盤面拡張）</li>
+  <li>駒を置くと盤上の駒が滑る（氷盤・氷駒）</li>
+  <li>時間切れの敗北が打ち消される（不死／予定）</li>
+</ul>
+<p>
+これらをすべて「<code>if (氷盤を持っている) { ... }</code>」のような分岐でゲーム本体に
+書き込むと、アビリティが増えるたびにゲームループが膨れ上がり、組み合わせも破綻します。
+</p>
+<div class="key">
+<b>フック設計の核心</b>
+そこで本作は発想を逆転させます。「勝利条件」「設置イベント」「ターン処理」「思考時間」
+「敗北処理」「盤面サイズ」という<strong>ルールの構成要素を、それぞれインターフェイス（フック）
+として抽象化</strong>します。ゲーム本体はルールを直接書かず、「現在登録されているフック」に
+判断を委ねます。アビリティはフックの実装を差し替える／追加することでルールを書き換えます。
+</div>
+<p>
+この設計は<strong>後付けが効きません</strong>。プロト版の最初期、まだアビリティが1つも無い段階から
+フックを通してゲームを動かしておく必要があります。デフォルト実装（4.4節）が「アビリティ
+ゼロの標準ルール」を担うため、フックを通しても素の〇×ゲームとして問題なく動きます。
+</p>
+
+<h2>4.2　フックインターフェイス群 (hooks.h)</h2>
+<p>
+<code>hooks.h</code> は6つのインターフェイス（純粋仮想クラス）を定義します。
+これがゲームルールの「差し替え点」の一覧です。
+</p>
+<table>
+  <tr><th>フック</th><th>役割</th><th>呼ばれるタイミング</th></tr>
+  <tr><td><code>IWinCondition</code></td><td>勝利条件の判定</td><td>着手後の評価時</td></tr>
+  <tr><td><code>IPlacementHandler</code></td><td>駒設置時のイベント</td><td>駒を1個置いた直後</td></tr>
+  <tr><td><code>ITurnHandler</code></td><td>1ターンの着手数・ターン境界処理</td><td>ターン開始/終了時</td></tr>
+  <tr><td><code>ITurnTimeProvider</code></td><td>思考時間の決定</td><td>ターン開始時</td></tr>
+  <tr><td><code>IDefeatHandler</code></td><td>敗北の打ち消し</td><td>敗北が発生したとき</td></tr>
+  <tr><td><code>IBoardModifier</code></td><td>盤面サイズの決定</td><td>試合開始時</td></tr>
+</table>
+<p>各フックの考え方を補足します。</p>
+<ul>
+  <li><strong><code>IWinCondition::Check</code></strong> ― 盤面と陣営を受け取り、勝っているかを返す。
+      「3並び」も「隅の支配」も、この実装の違いとして表現できます。</li>
+  <li><strong><code>IPlacementHandler::OnPlace</code></strong> ― 駒が置かれた直後に呼ばれ、
+      <code>GameState</code> を書き換えられる。氷駒・氷盤がここで駒を滑らせます。
+      盤面を動かす効果はここに集まります。</li>
+  <li><strong><code>ITurnHandler</code></strong> ― 1ターンの着手数（<code>GetPlacementCount</code>）と、
+      ターン開始/終了の処理を持つ。二手打ちは着手数を2にします。</li>
+  <li><strong><code>ITurnTimeProvider::GetTurnTimeSeconds</code></strong> ― その陣営の制限時間を返す。
+      熟考・余裕が加算します。</li>
+  <li><strong><code>IDefeatHandler::OnDefeat</code></strong> ― 敗北発生時に呼ばれ、
+      <code>true</code> を返すと敗北を打ち消す。不死などの「敗北回避」系の受け皿です。</li>
+  <li><strong><code>IBoardModifier::GetBoardSize</code></strong> ― 盤面の縦横マス数を決める。
+      盤面拡張が3×3を4×4にします。</li>
+</ul>
+<!--CODE:game/ability/hooks.h-->
+
+<h2>4.3　レジストリ (ability_registry)</h2>
+<p>
+<code>AbilityRegistry</code> は、「現在有効なフック実装」を集約し、ゲーム本体へ提供する
+窓口です。ゲームシーンはフックを直接触らず、すべて <code>AbilityRegistry</code> 経由で
+呼び出します。
+</p>
+<h3>単一フックと複数フック</h3>
+<p>フックは保持の仕方で2種類に分かれます。</p>
+<table>
+  <tr><th>種別</th><th>該当フック</th><th>保持方法</th></tr>
+  <tr><td>単一（差し替え式）</td>
+      <td><code>IWinCondition</code> / <code>ITurnHandler</code> /
+          <code>ITurnTimeProvider</code> / <code>IBoardModifier</code></td>
+      <td><code>shared_ptr</code> を1つ。<code>Set○○</code> で上書き。</td></tr>
+  <tr><td>複数（追加式）</td>
+      <td><code>IPlacementHandler</code> / <code>IDefeatHandler</code></td>
+      <td><code>vector</code>。<code>Add○○</code> で追加し、全部呼ぶ。</td></tr>
+</table>
+<p>
+「勝利条件」や「思考時間」は<strong>本質的に1つの答え</strong>を出すものなので単一にします。
+一方「設置イベント」は、氷駒と氷盤が同時に効くなど<strong>複数が共存しうる</strong>ので、
+登録順に全部呼びます。「敗北処理」も複数の打ち消し手段が共存しうるため追加式です。
+</p>
+<h3>呼び出しヘルパ</h3>
+<p>
+<code>CheckWin</code> / <code>OnPlace</code> / <code>GetPlacementCount</code> /
+<code>GetTurnTime</code> / <code>HandleDefeat</code> / <code>GetBoardSize</code> などの
+ヘルパが、保持しているフックへ処理を委譲します。ゲーム本体から見ると、
+<code>g_Registry.CheckWin(board, player)</code> のように1行でルールを問い合わせられます。
+</p>
+<!--CODE:game/ability/ability_registry.h-->
+<!--CODE:game/ability/ability_registry.cpp-->
+
+<h2>4.4　デフォルト実装 (default_hooks)</h2>
+<p>
+<code>default_hooks</code> は、アビリティを1つも持っていないときの「標準ルール」です。
+<code>AbilityRegistry</code> は構築時とリセット時に、これらをセットします。
+</p>
+<table>
+  <tr><th>デフォルト実装</th><th>標準ルール</th></tr>
+  <tr><td><code>DefaultWinCondition</code></td><td>縦横斜めの3並びで勝利。</td></tr>
+  <tr><td><code>DefaultTurnHandler</code></td><td>1ターン1着手。ターン境界処理なし。</td></tr>
+  <tr><td><code>DefaultTurnTimeProvider</code></td><td>制限時間180秒。</td></tr>
+  <tr><td><code>DefaultBoardModifier</code></td><td>盤面サイズ3×3。</td></tr>
+</table>
+<p>
+デフォルト実装があるおかげで、「フックを通す」こと自体は素の〇×ゲームの動作を
+何も変えません。フック設計の足場を最初に組んでも、ゲームは普通に遊べます。
+</p>
+<!--CODE:game/ability/default_hooks.h-->
+<!--CODE:game/ability/default_hooks.cpp-->
+
+<h2>4.5　チェインの仕組み</h2>
+<p>
+単一フックは1つしか保持できません。では、熟考（+30秒）と余裕（+60秒）を両方持ったら
+どうなるのでしょうか。答えが<strong>チェイン</strong>です。
+</p>
+<p>
+<code>AbilityRegistry::SetTurnTimeProvider</code> は、新しい実装をセットすると同時に
+<strong>古い実装を戻り値で返します</strong>。アビリティはこの「旧実装」を自分の中に
+<code>chained</code> として保持します。そして自分が呼ばれたら、まず <code>chained</code> に
+問い合わせ、その結果に自分の効果を足して返します。
+</p>
+<div class="flow">登録の流れ（熟考 → 余裕 の順に登録した場合）
+
+  registry 初期状態:   [Default(180秒)]
+
+  熟考.RegisterTo:
+     chained ← registry.SetTurnTimeProvider(熟考)   // 旧 Default を受け取る
+     registry:  [熟考] ── chained ──> [Default]
+
+  余裕.RegisterTo:
+     chained ← registry.SetTurnTimeProvider(余裕)    // 旧 熟考 を受け取る
+     registry:  [余裕] ─> [熟考] ─> [Default]
+
+呼び出し: registry.GetTurnTime(Player)
+     余裕.Get():  熟考.Get() の結果 + 60
+       熟考.Get():  Default.Get() の結果 + 30
+         Default.Get():  180
+       → 210
+     → 270</div>
+<p>
+このように、単一フックでも<strong>連結リスト状に積み重なって全効果が合算</strong>されます。
+複数フック（設置イベント等）は <code>vector</code> に並べて全部呼ぶだけなので、
+チェインは不要です。第5章以降の各アビリティで、この <code>chained</code> パターンが
+繰り返し登場します。
+</p>
+<div class="warn">
+<b>登録順が意味を持つ</b>
+チェインは登録順に積まれます。たとえば設置イベントでは、プレイヤーのアビリティを
+先に登録し、ボスのギミックを後に登録します。こうすると <code>OnPlace</code> は
+「プレイヤー効果 → ボス効果」の順で発火します（氷駒で置いた駒を滑らせてから、
+氷盤で全体を滑らせる、という意図した順序）。登録順は第10章の <code>LoadBoss</code> で確定します。
+</div>

@@ -1,0 +1,165 @@
+<!-- ================= 第10章 ================= -->
+<h1 id="ch10">第10章　ゲームシーンの詳解</h1>
+
+<div class="lead">
+ゲームシーン（<code>game.cpp</code>）は本作の中核であり、最大のファイルです。盤面プレイ、
+フックの統合、AI、効果アニメーション、HUD、アビリティUIのすべてがここに集まります。
+本章ではコードの流れを6つの観点に分けて解説し、最後に全ソースを掲載します。
+</div>
+
+<h2>10.1　状態と定数</h2>
+<p>
+<code>game.cpp</code> は、無名名前空間にレイアウト定数・配色・永続状態をまとめています。
+ゲームシーンが保持する主な状態は次の通りです。
+</p>
+<table>
+  <tr><th>状態</th><th>役割</th></tr>
+  <tr><td><code>g_State</code></td><td>試合状態（<code>GameState</code>）。盤面・手番・残り時間など。</td></tr>
+  <tr><td><code>g_Registry</code></td><td>フック実装の集約（<code>AbilityRegistry</code>）。</td></tr>
+  <tr><td><code>g_Boss</code> / <code>g_BossAbilities</code></td><td>現在のボスと、そのギミック。</td></tr>
+  <tr><td><code>g_AiTimer</code> / <code>g_AiPending</code></td><td>AI着手の遅延制御。</td></tr>
+  <tr><td><code>g_AnimPhases</code> ほか</td><td>効果アニメーションの再生状態（10.4節）。</td></tr>
+  <tr><td><code>g_AbilityPopupOpen</code> ほか</td><td>アビリティ履歴ポップアップの状態（10.6節）。</td></tr>
+</table>
+<p>
+盤面は画面中央に固定サイズ（<code>BOARD_SIZE</code>）で描かれます。1マスの大きさ
+<code>CellSize()</code> は、盤面のマス数で <code>BOARD_SIZE</code> を割って動的に求めます。
+盤面拡張で3×3が4×4になっても、この1か所で吸収できる仕組みです。
+</p>
+
+<h2>10.2　試合の初期化フロー</h2>
+<p>
+1試合の準備は <code>ResetMatch()</code> が行います。流れは次の通りです。
+</p>
+<div class="flow">ResetMatch()
+  ① g_State を初期化（盤面リセット、結果=Playing、ターン1）
+  ② g_Registry.ResetToDefaults()    フックを標準ルールへ戻す
+  ③ 演出・アニメ・ポップアップ状態を初期化
+  ④ LoadBoss()
+       ・ボスを生成 (IceBoardBoss)
+       ・プレイヤーのアビリティを先に RegisterTo  ┐ この順序が
+       ・ボスのギミックを後に RegisterTo          ┘ 発火順を決める
+  ⑤ 盤面サイズフックを適用
+       int w=3,h=3;  g_Registry.GetBoardSize(w,h);  board.Resize(w,h);
+  ⑥ BeginTurn(Player)   先手プレイヤーのターン開始</div>
+<p>
+ステップ④の<strong>登録順</strong>が重要です。プレイヤーのアビリティを先に登録するため、
+チェイン（単一フック）ではボス側が外側のラッパになり、設置イベント（複数フック）では
+プレイヤー効果が先に呼ばれます。第4章・第6章で触れた「氷駒で滑らせてから氷盤で滑らせる」
+順序が、ここで確定します。
+</p>
+<p>
+<code>BeginTurn(p)</code> は、その陣営の着手数と思考時間を<strong>フック経由で</strong>取得します
+（<code>GetPlacementCount</code> / <code>GetTurnTime</code>）。つまり二手打ちや熟考の効果は、
+ターン開始時に自動で反映されます。敵のターンならAI着手を予約します。
+</p>
+
+<h2>10.3　着手と評価のフロー</h2>
+<p>
+駒を1個置く処理は、プレイヤー入力（<code>HandlePlayerInput</code>）とAI（<code>HandleAiTurn</code>）の
+両方から、共通の <code>PlaceAndEvaluate(pos, placedBy)</code> へ集約されます。
+</p>
+<div class="flow">PlaceAndEvaluate(pos, placedBy)
+  ① 空きマスでなければ中断
+  ② 盤面に駒を置く、placementsRemaining を1減らす
+  ③ 設置グロー演出の位置を記録
+  ④ animPhases をクリア、設置直後の盤面を boardStart として控える
+  ⑤ g_Registry.OnPlace(...)      設置イベントフック発火
+                                  （氷駒・氷盤がここで animPhases に移動を積む）
+  ⑥ StartEffectAnimation(boardStart)   積まれたフェーズを再生用に展開
+  ⑦ EvaluateAfterPlace(placedBy)       勝敗・ターン進行を評価</div>
+<p>
+<code>EvaluateAfterPlace</code> は、勝利 → 引き分け → 追加着手 → ターン終了 の順で判定します。
+勝利判定で押さえるべき点が1つあります。
+</p>
+<div class="key">
+<b>両陣営の勝敗を確認する</b>
+氷盤ギミックは全駒を動かすため、「着手していない側」の駒が並ぶこともあります
+（ボスが置いた→スライド→プレイヤーの〇が斜めに揃う、など）。そのため勝利判定は、
+着手側だけでなく<strong>プレイヤー・ボスの両方</strong>について
+<code>g_Registry.CheckWin</code> を呼びます。双方が同時に揃った場合はプレイヤーを優先します
+（ボス側のランダムなギミックによる理不尽な敗北を避けるため）。
+</div>
+
+<h2>10.4　効果アニメーション</h2>
+<p>
+氷盤や氷駒は盤面を一瞬で書き換えますが、それをそのまま表示すると駒が「パッと」
+動いて分かりにくくなります。そこで本作は<strong>フェーズ方式の効果アニメーション</strong>を
+採用します。
+</p>
+<h3>フェーズという単位</h3>
+<p>
+盤面を動かす効果フックは、自分の移動を <code>GameState::animPhases</code> へ
+1つの <code>MoveList</code>（＝1フェーズ）として積みます。<strong>1フェーズ内の移動は同時、
+フェーズ間は順番に</strong>再生されます。たとえば氷駒2個＋氷盤なら、
+「氷駒の1マス移動」「氷駒の1マス移動」「氷盤の全駒移動」の3フェーズが積まれ、順に流れます。
+</p>
+<h3>再生の仕組み</h3>
+<p>
+<code>StartEffectAnimation</code> は、各フェーズ開始時点の盤面を <code>g_PhaseStartBoards</code>
+へ前計算します。<code>Game_Update</code> はアニメ再生中、入力・AI・タイマーを止めて
+フェーズを順に進めます。<code>DrawBoardAndPieces</code> は、再生中フェーズについて、
+動かない駒は静止描画し、動く駒は from→to の補間（イーズアウト）で描きます。
+これにより、駒が滑っていく様子が滑らかに見えます。
+</p>
+<div class="note">
+<b>設計の指針</b>
+「効果が発動したら必ずアニメーションで視覚化する」のが本作の方針です。フェーズ方式は
+特定の効果に依存しないため、新しい「駒を動かす効果」を足しても、その効果が
+<code>animPhases</code> へ移動を積みさえすれば、再生側は無改修で対応できます。
+</div>
+
+<h2>10.5　更新ループと入力</h2>
+<p>
+<code>Game_Update</code> は、状態に応じて3つのモードに分岐します。
+</p>
+<div class="flow">Game_Update(dt)
+  ・演出クロック更新、マウスホイール変化量を算出
+  ・R キーでリスタート（ESCはウィンドウ側の終了確認に割当て済みのため不使用）
+
+  ┌ 効果アニメ再生中 ────────────────────────
+  │   入力/AI/タイマーを止め、フェーズを順に進めるだけ
+  ├ プレイ中 (result == Playing) ─────────────
+  │   HandleTurnTimer（思考時間を消費）
+  │   ポップアップ表示中?
+  │     Yes → HandleAbilityPopup（盤面入力は止めるが時間は進行）
+  │     No  → HandleAbilityClick → 消費しなければ HandlePlayerInput
+  │   HandleAiTurn
+  └ ゲーム終了後 ──────────────────────────
+      一定時間待って、結果画面のボタンをマウスで処理</div>
+<p>
+入力は「アビリティUIのクリックを先に判定し、消費しなければ盤面クリックへ回す」という
+優先順で処理します。これにより、アビリティボタンの上をクリックしても誤って駒が
+置かれません。ESCキーはウィンドウ側で終了確認ダイアログに割り当て済みのため、
+リスタートやタイトルへの遷移はすべてマウス操作で完結するよう設計されています。
+</p>
+
+<h2>10.6　HUDとアビリティ履歴UI</h2>
+<p>
+<code>DrawHud</code> は、残り時間・手番・ボス名・所持アビリティを描画します。
+所持アビリティ表示には、やや込み入った仕様があります。
+</p>
+<ul>
+  <li><strong>グルーピング</strong> ― 同名アビリティは「氷駒 ×3」のようにまとめて表示。
+      <code>BuildAbilityGroups</code> が所持リストを同名で集約し、消費系（任意発動）を
+      先頭・続いてレアリティ降順に並べます。</li>
+  <li><strong>5件まで表示</strong> ― HUDにはグループを5件まで。超過時は6行目に
+      「……」ボタンを出します。</li>
+  <li><strong>履歴ポップアップ</strong> ― 「……」クリックで、全所持アビリティを
+      横並びカードで一覧するポップアップを開きます。マウスホイールで左右スクロールでき、
+      消費系カードはクリックで発動できます。</li>
+</ul>
+<div class="key">
+<b>ポップアップ表示中も時間は進む</b>
+履歴ポップアップは表示中もゲーム時間が進行します（盤面入力だけを止める）。
+そのため、すぐ使いたい消費系アビリティはHUDの5枠に優先表示し、ポップアップを
+開かなくても切れるようにしています。「UIを開いている間も時間が進む」という
+緊張感のあるルールと、それに合わせたUI優先順位の設計です。
+</div>
+<p>
+以下に <code>game.cpp</code> の全ソースを掲載します。本書で解説してきた全システム
+――フック・アビリティ・ボス・AI・描画・アニメーション――が、ここで1つのシーンとして
+統合される様子を読み取ってください。
+</p>
+<!--CODE:game/scene/game.h-->
+<!--CODE:game/scene/game.cpp-->

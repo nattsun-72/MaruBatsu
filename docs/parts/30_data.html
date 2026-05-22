@@ -1,0 +1,79 @@
+<!-- ================= 第2章 ================= -->
+<h1 id="ch2">第2章　基礎データ構造</h1>
+
+<div class="lead">
+ゲームのほぼ全モジュールが参照する、最小単位のデータ型を定義します。
+「駒」「座標」「方向」「試合状態」の4つです。ここを最初に固めることで、
+以降のシステムは共通の語彙で書けるようになります。
+</div>
+
+<h2>2.1　駒と座標 (piece.h)</h2>
+<p>
+<code>piece.h</code> は3つの要素を定義します。いずれもヘッダのみ（実装ファイル不要）です。
+</p>
+<ul>
+  <li><strong><code>enum class Piece</code></strong> ― 1マスの状態。
+      <code>Empty</code>（空き）／<code>Player</code>（プレイヤーの〇）／
+      <code>Enemy</code>（ボスの×）の3値。盤面はこの値の集合として表現されます。</li>
+  <li><strong><code>struct Vec2</code></strong> ― <code>int x, y</code> の2D整数座標。
+      盤面のマス座標に使います。<code>x</code> は列（横）、<code>y</code> は行（縦）。
+      負値（例 <code>{-1,-1}</code>）を「無効座標」の意味で使う慣習があります。</li>
+  <li><strong><code>Opponent(Piece)</code></strong> ― 相手陣営を返すヘルパ。
+      <code>Player⇔Enemy</code> を反転します。ターン交代で多用します。</li>
+</ul>
+<p>
+ここで重要なのは、<code>Piece</code> が<strong>「駒の所有者」と「マスの状態」を兼ねている</strong>点です。
+空きマスも1つの <code>Piece</code> 値（<code>Empty</code>）として扱うことで、盤面を
+「<code>Piece</code> の配列」というシンプルな形で表現でき、特別扱いが減ります。
+</p>
+<!--CODE:game/piece.h-->
+
+<h2>2.2　方向 (direction.h)</h2>
+<p>
+<code>direction.h</code> は上下左右の4方向 <code>enum class Direction</code> と、
+方向→数値ベクトルへの変換ヘルパを提供します。氷盤（全駒スライド）、氷駒（1マス滑走）、
+方向インジケータの矢印描画など、「方向」を扱うすべての箇所で共通利用します。
+</p>
+<ul>
+  <li><code>DirX(d)</code> / <code>DirY(d)</code> ― 方向のX成分・Y成分（<code>-1 / 0 / +1</code>）。
+      座標 <code>(x,y)</code> に足せば1マス先が得られます。</li>
+  <li><code>DirectionName(d)</code> ― 「上／下／左／右」の文字列。UI表示用。</li>
+</ul>
+<div class="note">
+<b>画面座標系に注意</b>
+<code>DirY</code> は <strong>Up が −1、Down が +1</strong> を返します。これは「画面の上ほどY座標が
+小さい」という2Dスクリーン座標系に合わせた定義です。盤面のマス座標もこの向きに統一して
+おくと、描画とロジックの座標がそのまま一致し、変換ミスが減ります。
+</div>
+<!--CODE:game/direction.h-->
+
+<h2>2.3　試合状態 (game_state.h)</h2>
+<p>
+<code>GameState</code> は、1試合の状態を丸ごと1つにまとめた構造体です。
+盤面・手番・残り思考時間・着手数・決着情報・効果アニメーション情報を持ちます。
+</p>
+<p>
+この構造体が重要なのは、<strong>フック（第4章）に渡される共通の引数</strong>だからです。
+勝利条件・設置イベント・ターン処理といった各フックは、この <code>GameState</code> を
+受け取り、必要に応じて参照・書き換えを行います。「試合に関する情報は全部ここにある」
+という1か所に集約することで、フックの引数がシンプルになり、新しいフックを足すときも
+迷いません。
+</p>
+<table>
+  <tr><th>メンバ</th><th>意味</th></tr>
+  <tr><td><code>board</code></td><td>盤面データ（第3章）。</td></tr>
+  <tr><td><code>currentPlayer</code></td><td>現在の手番（<code>Player</code> か <code>Enemy</code>）。</td></tr>
+  <tr><td><code>remainingTime</code></td><td>現ターンの残り思考時間（秒）。0以下で時間切れ。</td></tr>
+  <tr><td><code>turnCount</code></td><td>経過ターン数。</td></tr>
+  <tr><td><code>placementsRemaining</code></td><td>現ターンに「あと何個置けるか」。通常1、二手打ちで2。</td></tr>
+  <tr><td><code>result</code></td><td>試合結果（<code>MatchResult</code>）。進行中／勝利／敗北／引分／時間切れ。</td></tr>
+  <tr><td><code>winner</code></td><td>決着時の勝者。</td></tr>
+  <tr><td><code>animPhases</code></td><td>効果アニメーションのフェーズ列（第10章で詳述）。</td></tr>
+</table>
+<p>
+<code>MatchResult</code> 列挙型は、試合の進行状態と決着種別を1つにまとめています。
+<code>Playing</code> 以外の値になった瞬間、試合は決着しています。
+<code>animPhases</code> は「駒を動かす効果」がアニメ用の移動記録を積むための領域で、
+基礎データのうちでは唯一やや特殊です。これは第10章「効果アニメーション」で扱います。
+</p>
+<!--CODE:game/game_state.h-->

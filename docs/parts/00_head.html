@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>MaruBatsu 開発ガイド — Zankuu基盤から作る2D〇×ローグライト</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Yu Gothic UI","Meiryo","Yu Gothic",sans-serif;
+    font-size: 10.5pt; line-height: 1.75; color: #1a1a1a; margin: 0;
+  }
+  /* ---- 表紙 ---- */
+  .cover { height: 252mm; display:flex; flex-direction:column;
+           justify-content:center; align-items:center; text-align:center;
+           page-break-after: always; }
+  .cover .ttl { font-size: 32pt; color:#1f3a6e; font-weight:bold;
+                line-height:1.3; }
+  .cover .sub { font-size: 14pt; color:#42577f; margin-top:6mm; }
+  .cover .rule { width:70mm; border-top:3px solid #1f3a6e; margin:10mm 0; }
+  .cover .meta { font-size: 10.5pt; color:#555; line-height:2; }
+  /* ---- 見出し ---- */
+  h1 { font-size: 18pt; color:#fff; background:#1f3a6e; padding:4.5mm 6mm;
+       margin: 0 0 6mm; page-break-before: always; page-break-after: avoid; }
+  h2 { font-size: 14pt; color:#1f3a6e; border-bottom:2px solid #1f3a6e;
+       padding-bottom:1mm; margin: 9mm 0 3mm; page-break-after: avoid; }
+  h3 { font-size: 11.5pt; color:#2a4d8f; margin: 6mm 0 2mm;
+       page-break-after: avoid;
+       border-left:5px solid #2a4d8f; padding-left:3mm; }
+  h4 { font-size: 10.5pt; color:#333; margin: 4mm 0 1mm; }
+  p { margin: 1.5mm 0 2.5mm; }
+  ul,ol { margin: 1mm 0 3mm; padding-left: 7mm; }
+  li { margin: 0.8mm 0; }
+  strong { color:#1f3a6e; }
+  code { font-family:"Consolas","MS Gothic",monospace; font-size:9pt;
+         background:#eef0f5; padding:0 1mm; border-radius:2px;
+         word-break:break-all; }
+  /* ---- コードファイル ---- */
+  .codefile { margin: 3mm 0 5mm; }
+  .codefile-name { font-family:"Consolas","MS Gothic",monospace;
+    font-size:8.5pt; background:#1f3a6e; color:#fff; padding:1.2mm 3mm;
+    font-weight:bold; }
+  pre.code { font-family:"Consolas","MS Gothic",monospace;
+    font-size:8pt; line-height:1.45; background:#f6f7fa;
+    border:1px solid #c9cddb; border-top:none; margin:0;
+    padding:2.5mm 3mm; white-space:pre-wrap; word-wrap:break-word; }
+  /* ---- 注記ボックス ---- */
+  .note,.warn,.key { padding:2.5mm 4mm; margin:3mm 0; border-radius:3px; }
+  .note { background:#eef5ff; border-left:4px solid #2a4d8f; }
+  .warn { background:#fff4e5; border-left:4px solid #d98a00; }
+  .key  { background:#eafaef; border-left:4px solid #2a9d52; }
+  .note b,.warn b,.key b { display:block; margin-bottom:1mm; }
+  /* ---- 表 ---- */
+  table { border-collapse:collapse; width:100%; margin:3mm 0; font-size:9.3pt; }
+  th,td { border:1px solid #b9c0d0; padding:1.5mm 2.5mm; text-align:left;
+    vertical-align:top; }
+  th { background:#dfe4f0; color:#1f3a6e; }
+  /* ---- フロー図 ---- */
+  .flow { font-family:"Consolas","MS Gothic",monospace; font-size:8.6pt;
+    background:#f6f7fa; border:1px solid #c9cddb; padding:3mm;
+    white-space:pre; margin:3mm 0; line-height:1.5; overflow-x:hidden; }
+  /* ---- 目次 ---- */
+  .toc { page-break-after: always; }
+  .toc ol { list-style:none; padding-left:0; counter-reset:none; }
+  .toc > ol > li { margin:2.4mm 0 1mm; font-weight:bold; font-size:11pt;
+    color:#1f3a6e; }
+  .toc ol ol { padding-left:7mm; margin-top:0.5mm; }
+  .toc ol ol li { font-weight:normal; font-size:9.7pt; margin:0.6mm 0;
+    color:#333; }
+  .toc a { color:inherit; text-decoration:none; }
+  .lead { font-size:10.5pt; color:#333; background:#f2f4f9;
+    border:1px solid #d4dae8; padding:3mm 4mm; margin:3mm 0; border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- ============ 表紙 ============ -->
+<div class="cover">
+  <div class="ttl">MaruBatsu 開発ガイド</div>
+  <div class="sub">Zankuu フレームワークから作る<br>2D〇×ローグライト ― 全システム解説と構築手順</div>
+  <div class="rule"></div>
+  <div class="meta">
+    対象: ゲームプログラミング学習者・本プロジェクト保守担当<br>
+    内容: 全システム解説 ＋ 全ソースコード ＋ ゼロからの構築手順<br>
+    制作: Natsume Shidara (N72)　/　2026年5月
+  </div>
+</div>
+
+<!-- ============ 目次 ============ -->
+<div class="toc">
+<h1>目次</h1>
+<ol>
+  <li><a href="#ch0">第0章　はじめに ― 本書の読み方とプロジェクト概要</a>
+    <ol>
+      <li><a href="#ch0">0.1 本書の目的と対象読者</a></li>
+      <li><a href="#ch0">0.2 ゲームの全体像</a></li>
+      <li><a href="#ch0">0.3 「Zankuu基盤」とは何か</a></li>
+      <li><a href="#ch0">0.4 ディレクトリ構成と本書の用語</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch1">第1章　全体アーキテクチャ</a>
+    <ol>
+      <li><a href="#ch1">1.1 レイヤ構成 ― 基盤層とゲーム層</a></li>
+      <li><a href="#ch1">1.2 メインループ (main.cpp)</a></li>
+      <li><a href="#ch1">1.3 シーン管理 (scene)</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch2">第2章　基礎データ構造</a>
+    <ol>
+      <li><a href="#ch2">2.1 駒と座標 (piece.h)</a></li>
+      <li><a href="#ch2">2.2 方向 (direction.h)</a></li>
+      <li><a href="#ch2">2.3 試合状態 (game_state.h)</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch3">第3章　盤面システム</a>
+    <ol>
+      <li><a href="#ch3">3.1 盤面データ (board)</a></li>
+      <li><a href="#ch3">3.2 盤面操作 ― スライド (board_ops)</a></li>
+      <li><a href="#ch3">3.3 勝利条件の走査 (win_check)</a></li>
+      <li><a href="#ch3">3.4 衝突判定 (collision)</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch4">第4章　フック設計 ― 本プロジェクトの心臓部</a>
+    <ol>
+      <li><a href="#ch4">4.1 なぜフックなのか</a></li>
+      <li><a href="#ch4">4.2 フックインターフェイス群 (hooks.h)</a></li>
+      <li><a href="#ch4">4.3 レジストリ (ability_registry)</a></li>
+      <li><a href="#ch4">4.4 デフォルト実装 (default_hooks)</a></li>
+      <li><a href="#ch4">4.5 チェインの仕組み</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch5">第5章　アビリティシステム</a>
+    <ol>
+      <li><a href="#ch5">5.1 アビリティ基底クラス (ability.h)</a></li>
+      <li><a href="#ch5">5.2 抽選プール (ability_pool)</a></li>
+      <li><a href="#ch5">5.3 各アビリティの実装</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch6">第6章　ボスシステム</a>
+    <ol>
+      <li><a href="#ch6">6.1 ボス基底クラス (boss.h)</a></li>
+      <li><a href="#ch6">6.2 氷盤の支配者 (ice_board_boss)</a></li>
+      <li><a href="#ch6">6.3 ボスギミック「氷盤」 (boss_ice_slide)</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch7">第7章　AI ― 思考ルーチン</a></li>
+  <li><a href="#ch8">第8章　描画とテキスト</a>
+    <ol>
+      <li><a href="#ch8">8.1 図形描画 (render_primitives)</a></li>
+      <li><a href="#ch8">8.2 テキスト描画 (text_draw)</a></li>
+      <li><a href="#ch8">8.3 動的グリフアトラス (font_atlas)</a></li>
+      <li><a href="#ch8">8.4 フェード (fade)</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch9">第9章　ラン進行とシーン</a>
+    <ol>
+      <li><a href="#ch9">9.1 ラン状態 (run_state)</a></li>
+      <li><a href="#ch9">9.2 タイトルシーン (title)</a></li>
+      <li><a href="#ch9">9.3 報酬シーン (reward)</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch10">第10章　ゲームシーンの詳解</a>
+    <ol>
+      <li><a href="#ch10">10.1 状態と定数</a></li>
+      <li><a href="#ch10">10.2 試合の初期化フロー</a></li>
+      <li><a href="#ch10">10.3 着手と評価のフロー</a></li>
+      <li><a href="#ch10">10.4 効果アニメーション</a></li>
+      <li><a href="#ch10">10.5 更新ループと入力</a></li>
+      <li><a href="#ch10">10.6 HUDとアビリティ履歴UI</a></li>
+    </ol>
+  </li>
+  <li><a href="#ch11">第11章　ゼロからの構築手順</a></li>
+  <li><a href="#chA">付録　ビルド設定・用語集・拡張のヒント</a></li>
+</ol>
+</div>

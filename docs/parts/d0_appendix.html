@@ -1,0 +1,113 @@
+<!-- ================= 付録 ================= -->
+<h1 id="chA">付録　ビルド設定・拡張のヒント・早見表</h1>
+
+<h2>A.1　ビルド設定</h2>
+<p>
+開発環境は Visual Studio 2022 / C++20 / DirectX 11、構成は <code>Debug</code> /
+<code>Release</code> の <code>x64</code> です。ゲーム層を組む上で、特に注意すべき
+プロジェクト設定が1つあります。
+</p>
+<div class="warn">
+<b><code>/utf-8</code> コンパイルフラグ</b>
+本プロジェクトのソースは、日本語コメントを含む<strong>BOMなしUTF-8</strong>で書かれています。
+MSVCはBOMが無いソースを既定でShift-JISと解釈するため、そのままでは日本語コメントや
+文字列リテラルが文字化け・コンパイルエラーになります。プロジェクトの追加オプションに
+<code>/utf-8</code> を指定することで、ソースをUTF-8として正しく扱えます。これは
+ゲーム層を書き始める前（構築ステップ1）に必ず設定してください。
+</div>
+<p>
+ビルドはVisual Studio上のほか、MSBuildでも行えます。新しいソースファイルを追加した
+ときは、<code>.vcxproj</code> に <code>ClCompile</code> / <code>ClInclude</code> エントリを、
+<code>.vcxproj.filters</code> にフィルタ（ソリューションエクスプローラ上の仮想フォルダ）
+エントリを追加します。
+</p>
+
+<h2>A.2　拡張のヒント</h2>
+<p>
+本設計の狙いは「拡張のしやすさ」です。代表的な3つの拡張を、レシピとして示します。
+</p>
+
+<h3>新しいアビリティを追加する</h3>
+<ol>
+  <li>どのフックでルールを書き換えるかを決める（例：思考時間なら <code>ITurnTimeProvider</code>）。</li>
+  <li><code>game/ability/abilities/</code> に <code>○○.h/.cpp</code> を作り、
+      <code>Ability</code> と対象フックを多重継承する。</li>
+  <li>コンストラクタで名前・説明・レアリティを設定する。</li>
+  <li>パッシブなら <code>RegisterTo</code> でレジストリへ登録（単一フックは
+      <code>Set○○</code> でチェイン、複数フックは <code>Add○○</code>）。
+      アクティブなら <code>activatable = true</code> とし <code>Activate</code> 等を実装する。</li>
+  <li>フックのメソッドを実装する。チェイン型なら「自分の関心事だけ変え、残りは
+      <code>chained</code> へ委譲」を守る。</li>
+  <li><code>ability_pool.cpp</code> の <code>CreateAll()</code> に追加して、報酬抽選の
+      候補に含める。</li>
+  <li><code>.vcxproj</code> / <code>.vcxproj.filters</code> にファイルを登録する。</li>
+</ol>
+<p>
+既存のパラメータ違いで済むなら、「余裕」が「熟考」を継承したように、<strong>既存
+アビリティを継承してコンストラクタだけ書き換える</strong>のが最も簡単です。
+</p>
+
+<h3>新しいボスを追加する</h3>
+<ol>
+  <li>ボスのギミックを、アビリティとして実装する（<code>Ability</code>＋必要なフック）。</li>
+  <li><code>Boss</code> を継承した派生クラスを作り、<code>GetBossAbilities()</code> で
+      そのギミックを、<code>GetRewardAbility()</code> で撃破報酬（ギミックの弱化版）を返す。</li>
+  <li>ゲームシーンの <code>LoadBoss()</code> が、ボス番号に応じて生成するボスを
+      切り替えられるようにする（プロト版は固定生成）。</li>
+</ol>
+
+<h3>新しいフック（ルールの種類）を追加する</h3>
+<p>
+盤面サイズフック <code>IBoardModifier</code> を後から追加したときの手順が、そのまま
+雛形になります。
+</p>
+<ol>
+  <li><code>hooks.h</code> にインターフェイスを定義する。</li>
+  <li><code>default_hooks</code> に標準実装を追加し、<code>AbilityRegistry::ResetToDefaults</code>
+      でセットする。</li>
+  <li><code>AbilityRegistry</code> に保持メンバと <code>Set/Add</code>・呼び出しヘルパを足す。</li>
+  <li>ゲーム本体の該当箇所を、レジストリ経由の呼び出しへ置き換える。</li>
+</ol>
+
+<h2>A.3　フック早見表</h2>
+<p>「どのルールを変えたいときに、どのフックを使うか」の対応表です。</p>
+<table>
+  <tr><th>変えたいルール</th><th>フック</th><th>登録</th><th>実装例</th></tr>
+  <tr><td>勝利条件</td><td><code>IWinCondition</code></td><td>単一・チェイン</td><td>（α版の拡張勝利など）</td></tr>
+  <tr><td>駒設置時の効果</td><td><code>IPlacementHandler</code></td><td>複数・追加</td><td>氷駒・氷盤</td></tr>
+  <tr><td>1ターンの着手数</td><td><code>ITurnHandler</code></td><td>単一・チェイン</td><td>二手打ち・氷盤</td></tr>
+  <tr><td>思考時間</td><td><code>ITurnTimeProvider</code></td><td>単一・チェイン</td><td>熟考・余裕</td></tr>
+  <tr><td>敗北の打ち消し</td><td><code>IDefeatHandler</code></td><td>複数・追加</td><td>（α版の不死など）</td></tr>
+  <tr><td>盤面サイズ</td><td><code>IBoardModifier</code></td><td>単一・チェイン</td><td>盤面拡張</td></tr>
+  <tr><td>任意発動の即時効果</td><td>（フック不要・<code>Activate</code>）</td><td>―</td><td>集中</td></tr>
+</table>
+
+<h2>A.4　処理フロー早見表</h2>
+<p>本書で解説した主要なフローを、最後にまとめます。</p>
+<div class="flow">[アプリ起動]
+  WinMain → 基盤層初期化 → Scene_Initialize → メインループ
+
+[1フレーム]
+  Scene_Update → Scene_Draw → Direct3D_Present → Scene_Refresh
+
+[試合開始]
+  ResetMatch → LoadBoss（アビリティ登録）→ GetBoardSize/Resize → BeginTurn
+
+[1回の着手]
+  入力 or AI → PlaceAndEvaluate
+     → OnPlace（設置フック発火・animPhasesへ移動を積む）
+     → StartEffectAnimation（フェーズ展開）
+     → EvaluateAfterPlace（両陣営の勝敗→引分→追加着手→ターン終了）
+
+[ボス撃破後]
+  結果画面で「報酬を受け取る」→ IncrementBoss → GenerateRewardChoices
+     → Scene::REWARD（3択）→ 選択 → PlayerAbilitiesへ追加 → Scene::GAME</div>
+
+<div class="key">
+<b>おわりに</b>
+本書は、1つの〇×ローグライトを題材に「ルールを差し替え可能にする設計」を解説して
+きました。フックという1つの考え方が、アビリティ・ボスギミック・盤面構造・UIまでを
+貫いていることを読み取っていただけたなら幸いです。同じ設計は、カードゲームや
+他のローグライトにも応用できます。本書が、拡張に強いゲームを設計するための
+一例として役立つことを願っています。
+</div>

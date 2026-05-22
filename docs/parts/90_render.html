@@ -1,0 +1,107 @@
+<!-- ================= 第8章 ================= -->
+<h1 id="ch8">第8章　描画とテキスト</h1>
+
+<div class="lead">
+本作のビジュアルは「黒背景＋幾何学図形＋グロー」のミニマル抽象路線です。専用の
+イラスト素材をほとんど使わず、図形とテキストだけで画面を構成します。本章では、
+その図形描画・テキスト描画・日本語フォント・フェードの4モジュールを解説します。
+</div>
+
+<h2>8.1　図形描画 (render_primitives)</h2>
+<p>
+<code>Prim</code> 名前空間は、矩形・直線・円・×を描くヘルパです。専用テクスチャを
+持たず、<strong>1pxの白画像（<code>white.png</code>）を引き伸ばし・回転させて</strong>
+あらゆる図形を描くのが基本トリックです。
+</p>
+<ul>
+  <li><strong><code>DrawRect</code></strong> ― 白画像を指定サイズへ拡大し、頂点カラーで着色。</li>
+  <li><strong><code>DrawLine</code></strong> ― 始点→終点のベクトルから長さと角度を求め、
+      白画像を「長さ × 太さ」の細い矩形にして、その角度へ回転させて描く。
+      2D描画における「線＝細い回転矩形」という定番手法です。</li>
+  <li><strong><code>DrawCircle</code></strong> ― 円周を <code>segments</code> 本の弦（直線）で
+      近似する。内部で <code>DrawLine</code> を繰り返し呼びます。</li>
+  <li><strong><code>DrawCross</code></strong> ― 交差する2本の <code>DrawLine</code> で×を描く。</li>
+</ul>
+<p>
+スプライト描画は頂点カラー乗算に対応しているため、白い図形に任意の色（と
+アルファ）を掛けられます。プレイヤーの〇、ボスの×、グリッド線、UIの矩形、
+グロー効果まで、すべてこの4関数の組み合わせで描けます。利用前に
+<code>Prim::Initialize()</code> で <code>white.png</code> をロードしておく必要があります。
+</p>
+<!--CODE:game/render_primitives.h-->
+<!--CODE:game/render_primitives.cpp-->
+
+<h2>8.2　テキスト描画 (text_draw)</h2>
+<p>
+<code>Text</code> 名前空間は、UTF-8文字列を画面に描画します。
+</p>
+<ul>
+  <li><strong><code>Draw(x,y,text,charSize,color)</code></strong> ― 文字列を等幅で描画。
+      <code>\n</code> で改行。日本語を含む任意のUnicodeに対応。</li>
+  <li><strong><code>MeasureWidth(text,charSize)</code></strong> ― 表示幅を計測（中央寄せ等に使う）。</li>
+</ul>
+<h3>UTF-8デコードと等幅描画</h3>
+<p>
+内部の <code>DecodeUtf8</code> は、UTF-8のバイト列から1文字（コードポイント）を取り出し、
+ポインタを次の文字へ進めます。先頭バイトのビットパターンから「2バイト文字／3バイト
+文字／4バイト文字」を判別し、継続バイトを連結します。
+</p>
+<p>
+描画は<strong>等幅（各文字を <code>charSize</code> 四方のセル）</strong>で行います。
+1文字ぶん描いてはカーソルを <code>charSize</code> だけ右へ送る、を繰り返すだけです。
+日本語の文字はもともとほぼ正方形なので、等幅でも見た目が破綻しません。実際の
+グリフ画像は次節の <code>FontAtlas</code> から取得します。
+</p>
+<!--CODE:game/text_draw.h-->
+<!--CODE:game/text_draw.cpp-->
+
+<h2>8.3　動的グリフアトラス (font_atlas)</h2>
+<p>
+<code>FontAtlas</code> は、本作のテキスト描画を支える最も技術的なモジュールです。
+当初はASCII画像フォントを使っていましたが、UIテキストを日本語化するにあたり、
+<strong>必要になった文字をその場でラスタライズしてキャッシュする</strong>動的アトラス方式へ
+切り替えました。
+</p>
+<h3>なぜ動的生成か</h3>
+<p>
+日本語は文字数が膨大です。全文字をあらかじめ1枚の画像に焼き込むのは非現実的です。
+そこで、<strong>ゲーム中に実際に使われた文字だけ</strong>を、初出時にDirectWriteで
+ラスタライズし、D3D11のアトラステクスチャ（2048×2048、64px×64pxセル）へ
+書き込んでキャッシュします。2回目以降は同じグリフを再利用します。
+</p>
+<h3>1グリフのラスタライズ手順</h3>
+<div class="flow">1. Direct2D で、64px四方のオフスクリーン（WICビットマップ）に1文字を DrawText
+2. WICビットマップをロックし、画素（プリマルチプライ済みBGRA）を読む
+3. 「白RGB ＋ カバレッジα」のストレートRGBA へ変換
+4. D3D11アトラステクスチャの空きセルへ UpdateSubresource で転送
+5. そのセルの正規化UVを算出してキャッシュ</div>
+<p>
+手順3が肝です。Direct2Dは白い文字をプリマルチプライアルファで描くため、画素の
+アルファ値がそのまま「文字の被覆率」になります。これを「RGBは白固定・αは被覆率」
+というストレートアルファのRGBAへ変換しておくと、2Dシェーダの
+「テクスチャ色 × 頂点色」だけで、グリフに任意の色を掛けて描画できます。
+専用のテキストシェーダが要りません。
+</p>
+<p>
+DirectWrite（フォントとテキストレイアウト）、Direct2D（描画）、WIC（ビットマップ）の
+3つのCOMコンポーネントを組み合わせる、Windowsのテキスト描画の典型構成です。
+COMリソースは <code>Finalize</code> で <code>Direct3D_Finalize</code> より前に解放します。
+</p>
+<!--CODE:game/font_atlas.h-->
+<!--CODE:game/font_atlas.cpp-->
+
+<h2>8.4　フェード (fade)</h2>
+<p>
+<code>fade</code> は、画面全体を単色の矩形で覆い、そのアルファ値を時間で変化させる
+ことでフェードイン／フェードアウトを行います。<code>Fade_Start(duration, isFadeOut, color)</code>
+で開始し、<code>Fade_Update</code> が進捗0→1を計算してアルファへ反映、
+<code>Fade_Draw</code> が画面最前面に矩形を重ねます。
+</p>
+<p>
+状態は <code>FADE_STATE</code> 列挙型（なし／イン中／アウト中／イン完了／アウト完了）で
+管理します。<code>Fade_GetState</code> で状態を問い合わせれば、「フェードアウト完了を
+待ってシーン遷移」といった演出のつなぎが書けます。プロト版では控えめな利用ですが、
+シーン遷移の質を上げる部品として用意されています。
+</p>
+<!--CODE:game/fade.h-->
+<!--CODE:game/fade.cpp-->

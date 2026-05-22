@@ -322,7 +322,7 @@ namespace
         const int total   = static_cast<int>(g_State.remainingTime + 0.999);
         const int minutes = total / 60;
         const int seconds = total % 60;
-        std::snprintf(buf, sizeof(buf), "TIME  %d:%02d", minutes, seconds);
+        std::snprintf(buf, sizeof(buf), "残り %d:%02d", minutes, seconds);
         const DirectX::XMFLOAT4& timeColor =
             (g_State.remainingTime < 30.0
              && g_State.result == MatchResult::Playing
@@ -333,7 +333,7 @@ namespace
         if (g_State.result == MatchResult::Playing)
         {
             const char* turn =
-                (g_State.currentPlayer == Piece::Player) ? "PLAYER (O)" : "ENEMY  (X)";
+                (g_State.currentPlayer == Piece::Player) ? "あなたの番（〇）" : "ボスの番（×）";
             const float w = Text::MeasureWidth(turn, TEXT_SIZE_HUD);
             Text::Draw(screenW - w - 24.0f, 24.0f, turn, TEXT_SIZE_HUD, COLOR_TEXT);
         }
@@ -342,7 +342,7 @@ namespace
         if (g_Boss)
         {
             char nameBuf[64];
-            std::snprintf(nameBuf, sizeof(nameBuf), "BOSS  %s", g_Boss->name.c_str());
+            std::snprintf(nameBuf, sizeof(nameBuf), "ボス：%s", g_Boss->name.c_str());
             const float nameW = Text::MeasureWidth(nameBuf, TEXT_SIZE_HUD);
             Text::Draw((screenW - nameW) * 0.5f, 24.0f, nameBuf,
                        TEXT_SIZE_HUD, COLOR_TEXT_URGENT);
@@ -351,7 +351,7 @@ namespace
         if (g_IceSlideRef && g_State.result == MatchResult::Playing)
         {
             char dirBuf[64];
-            std::snprintf(dirBuf, sizeof(dirBuf), "SLIDE %s",
+            std::snprintf(dirBuf, sizeof(dirBuf), "氷盤：%s方向へ滑る",
                           DirectionName(g_IceSlideRef->currentDir));
             const float dw = Text::MeasureWidth(dirBuf, TEXT_SIZE_HINT);
             Text::Draw((screenW - dw) * 0.5f, 24.0f + TEXT_SIZE_HUD + 4.0f,
@@ -367,12 +367,12 @@ namespace
             float ay = screenH - 24.0f
                        - TEXT_SIZE_HINT * static_cast<float>(playerAbils.size())
                        - TEXT_SIZE_HUD;
-            Text::Draw(ax, ay, "ABILITIES", TEXT_SIZE_HUD, COLOR_TEXT);
+            Text::Draw(ax, ay, "所持アビリティ", TEXT_SIZE_HUD, COLOR_TEXT);
             ay += TEXT_SIZE_HUD + 4.0f;
             for (const auto& a : playerAbils)
             {
                 char rowBuf[128];
-                std::snprintf(rowBuf, sizeof(rowBuf), "- %s", a->name.c_str());
+                std::snprintf(rowBuf, sizeof(rowBuf), "・%s", a->name.c_str());
                 Text::Draw(ax, ay, rowBuf, TEXT_SIZE_HINT, COLOR_TEXT_HINT);
                 ay += TEXT_SIZE_HINT;
             }
@@ -392,10 +392,10 @@ namespace
         DirectX::XMFLOAT4 color = COLOR_TEXT;
         switch (g_State.result)
         {
-        case MatchResult::Win:     msg = "PLAYER WIN!"; color = COLOR_TEXT_WIN; break;
-        case MatchResult::Lose:    msg = "YOU LOSE";    color = COLOR_TEXT_LOSE; break;
-        case MatchResult::Draw:    msg = "DRAW";        color = COLOR_TEXT_DRAW; break;
-        case MatchResult::Timeout: msg = "TIME OUT";    color = COLOR_TEXT_LOSE; break;
+        case MatchResult::Win:     msg = "勝利！";   color = COLOR_TEXT_WIN; break;
+        case MatchResult::Lose:    msg = "敗北";     color = COLOR_TEXT_LOSE; break;
+        case MatchResult::Draw:    msg = "引き分け"; color = COLOR_TEXT_DRAW; break;
+        case MatchResult::Timeout: msg = "時間切れ"; color = COLOR_TEXT_LOSE; break;
         default: break;
         }
         const float msgW = Text::MeasureWidth(msg, TEXT_SIZE_BIG);
@@ -403,8 +403,8 @@ namespace
                    msg, TEXT_SIZE_BIG, color);
 
         const char* hint = (g_State.result == MatchResult::Win)
-            ? "CLICK / SPACE TO CLAIM REWARD"
-            : "[R] RESTART    [ESC] TITLE";
+            ? "クリック / スペースで報酬へ"
+            : "[R] リスタート    [ESC] タイトル";
         const float hintW = Text::MeasureWidth(hint, TEXT_SIZE_HINT);
         Text::Draw((screenW - hintW) * 0.5f, screenH * 0.5f + 30.0f,
                    hint, TEXT_SIZE_HINT, COLOR_TEXT_HINT);

@@ -8,8 +8,8 @@
 
 MarginAbility::MarginAbility()
 {
-    name          = "Margin";
-    description   = "Player turn time +60s (permanent, strong common).";
+    name          = "余裕";
+    description   = "毎ターン思考時間\n+60秒 (恒久)";
     rarity        = Rarity::Common;
     bonusSeconds  = 60.0;
 }

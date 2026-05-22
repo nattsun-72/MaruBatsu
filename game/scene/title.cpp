@@ -63,7 +63,7 @@ void Title_Draw()
 
     // タイトルロゴ
     const char* title    = "MARUBATSU";
-    const char* subtitle = "tactical roguelite";
+    const char* subtitle = "〇×ローグライト";
     const float titleW = Text::MeasureWidth(title, TEXT_TITLE_SIZE);
     const float subW   = Text::MeasureWidth(subtitle, TEXT_SUBTITLE);
 
@@ -76,7 +76,7 @@ void Title_Draw()
     const bool show = (static_cast<int>(g_BlinkTimer * 1.5) % 2) == 0;
     if (show)
     {
-        const char* hint = "PRESS SPACE / CLICK TO START";
+        const char* hint = "スペース または クリックで開始";
         const float hintW = Text::MeasureWidth(hint, TEXT_HINT_SIZE);
         Text::Draw((screenW - hintW) * 0.5f, screenH * 0.72f,
                    hint, TEXT_HINT_SIZE, COLOR_HINT);

@@ -9,8 +9,8 @@
 
 ContemplationAbility::ContemplationAbility()
 {
-    name        = "Contemplation";
-    description = "Player turn time +30s (permanent).";
+    name        = "熟考";
+    description = "毎ターン思考時間\n+30秒 (恒久)";
     rarity      = Rarity::Common;
 }
 

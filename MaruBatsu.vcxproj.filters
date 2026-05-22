@@ -150,6 +150,9 @@
     <ClCompile Include="game\fade.cpp">
       <Filter>ソースファイル\game</Filter>
     </ClCompile>
+    <ClCompile Include="game\font_atlas.cpp">
+      <Filter>ソースファイル\game</Filter>
+    </ClCompile>
     <ClCompile Include="game\render_primitives.cpp">
       <Filter>ソースファイル\game</Filter>
     </ClCompile>
@@ -276,6 +279,9 @@
       <Filter>ヘッダーファイル\game</Filter>
     </ClInclude>
     <ClInclude Include="game\fade.h">
+      <Filter>ヘッダーファイル\game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\font_atlas.h">
       <Filter>ヘッダーファイル\game</Filter>
     </ClInclude>
     <ClInclude Include="game\piece.h">

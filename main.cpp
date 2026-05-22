@@ -46,6 +46,7 @@
 #include "scene.h"
 #include "fade.h"
 #include "debug_text.h"
+#include "text_draw.h"
 
 int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     _In_ int nCmdShow)
@@ -171,6 +172,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     SoundManager_Finalize();
 
     // 描画リソース
+    Text::Finalize();
     Fade_Finalize();
     SpriteAnim_Finalize();
     Texture_Finalize();

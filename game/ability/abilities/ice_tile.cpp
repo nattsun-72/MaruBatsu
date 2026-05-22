@@ -12,8 +12,8 @@
 
 IceTileAbility::IceTileAbility()
 {
-    name        = "Ice Tile";
-    description = "Your placed piece slides 1 cell on placement.";
+    name        = "氷駒";
+    description = "置いた自分の駒が\n1マス滑る";
     rarity      = Rarity::Rare;
 }
 

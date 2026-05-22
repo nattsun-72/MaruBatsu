@@ -10,8 +10,8 @@
 
 IceBoardBoss::IceBoardBoss()
 {
-    name        = "Ice Tyrant";
-    description = "Each placement slides every piece to the edge.";
+    name        = "氷盤の支配者";
+    description = "駒を置くたび全ての駒が滑る";
     difficulty  = 1;
 }
 

@@ -162,6 +162,18 @@ void Sprite_Draw(ID3D11ShaderResourceView* pSRV, float display_x, float display_
     SetVertexAndDraw(display_x, display_y, display_w, display_h, u0, v0, u1, v1, angle, color);
 }
 
+/** @brief SRV直接指定 + 正規化UV切り抜き描画 */
+void Sprite_Draw(ID3D11ShaderResourceView* pSRV, float display_x, float display_y, float display_w, float display_h, float u0, float v0, float u1, float v1, float angle, const DirectX::XMFLOAT4& color)
+{
+    if (!pSRV) return;
+
+    // テクスチャを直接バインド（スロット0と仮定）
+    g_pContext->PSSetShaderResources(0, 1, &pSRV);
+
+    // 指定された正規化UVでそのまま描画
+    SetVertexAndDraw(display_x, display_y, display_w, display_h, u0, v0, u1, v1, angle, color);
+}
+
 
 // 内部ヘルパー実装
 /**

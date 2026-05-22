@@ -53,4 +53,11 @@ void Sprite_Draw(int texid, float display_x, float display_y, float uvcut_x, flo
  */
 void Sprite_Draw(ID3D11ShaderResourceView* pSRV, float display_x, float display_y, float display_w, float display_h, float angle = 0.0f, const DirectX::XMFLOAT4& color = DirectX::XMFLOAT4(1, 1, 1, 1));
 
+/**
+ * @brief SRV直接指定 + 正規化UV切り抜き描画
+ * @detail 動的アトラス(フォントグリフ等)の一部セルを描画する用途。
+ * @param u0,v0,u1,v1 正規化UV (0.0〜1.0)
+ */
+void Sprite_Draw(ID3D11ShaderResourceView* pSRV, float display_x, float display_y, float display_w, float display_h, float u0, float v0, float u1, float v1, float angle = 0.0f, const DirectX::XMFLOAT4& color = DirectX::XMFLOAT4(1, 1, 1, 1));
+
 #endif // SPRITE_H

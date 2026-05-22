@@ -10,8 +10,8 @@
 
 LineAddedAbility::LineAddedAbility()
 {
-    name        = "Line Added";
-    description = "You also win by controlling 3+ corners.";
+    name        = "ライン本数追加";
+    description = "3つの隅の支配でも\n勝利になる";
     rarity      = Rarity::Rare;
 }
 

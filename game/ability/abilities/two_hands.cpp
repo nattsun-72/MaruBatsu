@@ -9,8 +9,8 @@
 
 TwoHandsAbility::TwoHandsAbility()
 {
-    name        = "Two Hands";
-    description = "Place 2 pieces consecutively per turn.";
+    name        = "二手打ち";
+    description = "1ターンに2回\n連続で配置できる";
     rarity      = Rarity::Rare;
 }
 

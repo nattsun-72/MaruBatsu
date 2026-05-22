@@ -59,11 +59,11 @@ namespace
     {
         switch (r)
         {
-        case Rarity::Common:    return "COMMON";
-        case Rarity::Rare:      return "RARE";
-        case Rarity::Epic:      return "EPIC";
-        case Rarity::Legendary: return "LEGENDARY";
-        case Rarity::Curse:     return "CURSE";
+        case Rarity::Common:    return "コモン";
+        case Rarity::Rare:      return "レア";
+        case Rarity::Epic:      return "エピック";
+        case Rarity::Legendary: return "レジェンダリー";
+        case Rarity::Curse:     return "呪い";
         }
         return "";
     }
@@ -145,7 +145,7 @@ void Reward_Draw()
     Prim::DrawRect(0, 0, screenW, screenH, COLOR_BG);
 
     // ヘッダ
-    const char* header = "CHOOSE  YOUR  REWARD";
+    const char* header = "報酬を選択";
     const float hw = Text::MeasureWidth(header, TEXT_HEADER);
     Text::Draw((screenW - hw) * 0.5f, 60.0f, header, TEXT_HEADER, COLOR_HEADER);
 
@@ -178,30 +178,13 @@ void Reward_Draw()
         Text::Draw(ox + (CARD_W - nw) * 0.5f, oy + 60.0f,
                    ability->name.c_str(), TEXT_TITLE, COLOR_TEXT);
 
-        // 説明 (簡易な折り返し処理: 26文字で改行)
-        const std::string& desc = ability->description;
-        constexpr size_t kWrap = 26;
-        std::string wrapped;
-        wrapped.reserve(desc.size() + desc.size() / kWrap);
-        size_t col = 0;
-        for (char c : desc)
-        {
-            if (col >= kWrap && c == ' ')
-            {
-                wrapped.push_back('\n');
-                col = 0;
-                continue;
-            }
-            wrapped.push_back(c);
-            if (c == '\n') col = 0;
-            else           ++col;
-        }
-        Text::Draw(ox + 16.0f, oy + 130.0f, wrapped.c_str(),
+        // 説明 (改行は description 内の \n で明示済み)
+        Text::Draw(ox + 16.0f, oy + 130.0f, ability->description.c_str(),
                    TEXT_DESC, COLOR_HINT);
     }
 
     // ヒント
-    const char* hint = "CLICK A CARD TO CHOOSE    [ESC] ABANDON RUN";
+    const char* hint = "カードをクリックで選択    [ESC] ラン中断";
     const float hwh = Text::MeasureWidth(hint, TEXT_HINT);
     Text::Draw((screenW - hwh) * 0.5f, screenH - 40.0f,
                hint, TEXT_HINT, COLOR_HINT);

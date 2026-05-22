@@ -218,6 +218,7 @@
     <ClCompile Include="game\boss\ice_board_boss.cpp" />
     <ClCompile Include="game\collision.cpp" />
     <ClCompile Include="game\fade.cpp" />
+    <ClCompile Include="game\font_atlas.cpp" />
     <ClCompile Include="game\render_primitives.cpp" />
     <ClCompile Include="game\run_state.cpp" />
     <ClCompile Include="game\scene\reward.cpp" />
@@ -266,6 +267,7 @@
     <ClInclude Include="game\collision.h" />
     <ClInclude Include="game\direction.h" />
     <ClInclude Include="game\fade.h" />
+    <ClInclude Include="game\font_atlas.h" />
     <ClInclude Include="game\game_state.h" />
     <ClInclude Include="game\piece.h" />
     <ClInclude Include="game\render_primitives.h" />

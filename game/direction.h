@@ -42,10 +42,10 @@ inline const char* DirectionName(Direction d)
 {
     switch (d)
     {
-    case Direction::Up:    return "UP";
-    case Direction::Down:  return "DOWN";
-    case Direction::Left:  return "LEFT";
-    case Direction::Right: return "RIGHT";
+    case Direction::Up:    return "上";
+    case Direction::Down:  return "下";
+    case Direction::Left:  return "左";
+    case Direction::Right: return "右";
     }
     return "?";
 }

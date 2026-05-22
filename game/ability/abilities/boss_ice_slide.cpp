@@ -24,8 +24,8 @@ namespace
 
 BossIceSlideAbility::BossIceSlideAbility()
 {
-    name        = "Ice Board (Boss)";
-    description = "All pieces slide to the edge each placement. Direction randomizes per turn.";
+    name        = "氷盤";
+    description = "全ての駒が指定方向へ\n端まで滑る";
     rarity      = Rarity::Rare;
     currentDir  = RandomDir();
 }

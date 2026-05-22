@@ -1,37 +1,76 @@
 /****************************************
- * @file game_state.h
- * @brief 試合中の状態 (フック設計の引き渡し対象)
+ * @file   game_state.h
+ * @brief  1試合の状態(フック設計の引き渡し対象)
  * @author Natsume Shidara
- * @date 2026/05/15
+ * @date   2026/05/15
+ * @update 2026/05/22 - 効果アニメーション用フェーズ列を追加
  *
- * Board + 現プレイヤー + ターン残り時間 など、
- * 1試合のスナップショットをまとめる構造体。
- * 各フックは GameState を参照/書き換えできる。
+ * 盤面・現プレイヤー・ターン残り時間などの、1試合のスナップショットを
+ * まとめた構造体。各フック(IWinCondition 等)はこの GameState を
+ * 受け取り、参照および書き換えを行う。
  ****************************************/
 #ifndef GAME_STATE_H
 #define GAME_STATE_H
 
-#include "board.h"
-#include "piece.h"
+//--------------------------------------
+// インクルード
+//--------------------------------------
+#include "board.h"       // 盤面データ Board
+#include "board_ops.h"   // BoardOps::MoveList (アニメ用の移動記録)
+#include "piece.h"       // Piece / MatchResult が参照
 
+#include <vector>
+
+//======================================
+// 試合結果
+//======================================
+/**
+ * @enum   MatchResult
+ * @brief  1試合の進行状態 / 決着種別
+ */
 enum class MatchResult
 {
-    Playing,
+    Playing,  // 進行中
     Win,      // プレイヤー勝利
-    Lose,     // AI勝利
-    Draw,     // 引き分け (盤面満杯)
-    Timeout,  // 時間切れ
+    Lose,     // AI(ボス)勝利
+    Draw,     // 引き分け（盤面が満杯で決着なし）
+    Timeout,  // 時間切れ（プレイヤーの敗北）
 };
 
+//======================================
+// 試合状態
+//======================================
+/**
+ * @struct GameState
+ * @brief  1試合の全状態をまとめたスナップショット
+ * @detail フック群はこの構造体を介して盤面やターン情報を読み書きする。
+ *         ゲームシーンが唯一の実体を保持する。
+ */
 struct GameState
 {
-    Board       board;
-    Piece       currentPlayer        = Piece::Player;
-    double      remainingTime        = 0.0;
-    int         turnCount            = 0;
-    int         placementsRemaining  = 0;   // 現ターン残り着手数
-    MatchResult result               = MatchResult::Playing;
-    Piece       winner               = Piece::Empty;
+    //--------------------------------------
+    // 盤面・ターン情報
+    //--------------------------------------
+    Board       board;                                 // 盤面データ
+    Piece       currentPlayer        = Piece::Player;   // 現在の手番
+    double      remainingTime        = 0.0;             // 現ターンの残り思考時間(秒)
+    int         turnCount            = 0;               // 経過ターン数
+    int         placementsRemaining  = 0;               // 現ターンの残り着手数
+
+    //--------------------------------------
+    // 決着情報
+    //--------------------------------------
+    MatchResult result               = MatchResult::Playing;  // 試合結果
+    Piece       winner               = Piece::Empty;          // 勝者(決着時のみ有効)
+
+    //--------------------------------------
+    // 効果アニメーション
+    //--------------------------------------
+    // 1回の設置で発生した効果を「フェーズ」単位で記録する。
+    // 各フェーズ内の移動は同時、フェーズ間は順次再生される。
+    // 駒を動かす効果フック(氷盤/氷駒/連鎖/爆弾など)が自分の移動を
+    // 1フェーズとして push し、ゲームシーンが順番にアニメ再生する。
+    std::vector<BoardOps::MoveList> animPhases;
 };
 
 #endif // GAME_STATE_H

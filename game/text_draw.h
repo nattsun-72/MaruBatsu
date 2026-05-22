@@ -1,8 +1,8 @@
 /****************************************
- * @file text_draw.h
- * @brief ゲーム内テキスト描画 (DirectWrite動的グリフアトラス)
+ * @file   text_draw.h
+ * @brief  ゲーム内テキスト描画 (DirectWrite動的グリフアトラス)
  * @author Natsume Shidara
- * @date 2026/05/15
+ * @date   2026/05/15
  * @update 2026/05/22 - 日本語対応 (DirectWriteグリフアトラス)
  *
  * UTF-8文字列を受け取り、FontAtlas が実行時にラスタライズした
@@ -13,6 +13,9 @@
 
 #include <DirectXMath.h>
 
+//======================================
+// テキスト描画 名前空間
+//======================================
 namespace Text
 {
     /** @brief フォントアトラスの初期化 (多重呼び出しは無視) */
@@ -22,17 +25,22 @@ namespace Text
     void Finalize();
 
     /**
-     * @brief 文字列をスクリーン座標 (x, y) を左上として描画
-     * @param x        左上X座標
-     * @param y        左上Y座標
-     * @param text     UTF-8文字列 (\n で改行)。日本語可。
-     * @param charSize 1文字の表示サイズ(正方形・等幅)
-     * @param color    頂点カラー
+     * @brief  文字列を、スクリーン座標 (x, y) を左上として描画
+     * @param  x        左上X座標
+     * @param  y        左上Y座標
+     * @param  text     UTF-8文字列 (\n で改行)。日本語可。
+     * @param  charSize 1文字の表示サイズ(正方形・等幅)
+     * @param  color    頂点カラー
      */
     void Draw(float x, float y, const char* text,
               float charSize, const DirectX::XMFLOAT4& color = {1, 1, 1, 1});
 
-    /** @brief 文字列の表示幅 (charSize × コードポイント数のうち最長行) */
+    /**
+     * @brief  文字列の表示幅を計測
+     * @param  text     対象の文字列
+     * @param  charSize 1文字の表示サイズ
+     * @return 最長行の幅 (charSize × その行のコードポイント数)
+     */
     float MeasureWidth(const char* text, float charSize);
 }
 

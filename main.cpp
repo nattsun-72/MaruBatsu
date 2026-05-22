@@ -1,8 +1,8 @@
 /****************************************
- * @file main.cpp
- * @brief アプリケーションエントリーポイント (2D版)
+ * @file   main.cpp
+ * @brief  アプリケーションエントリーポイント (2D版)
  * @author Natsume Shidara
- * @date 2025/06/06
+ * @date   2025/06/06
  * @update 2026/05/15 - 〇×ローグライト用2D版へスリム化
  *
  * WinMainを含むメインループの管理。
@@ -19,38 +19,64 @@
 #include <Windows.h>
 #include <sstream>
 
+//--------------------------------------
 // ウィンドウ・入力
+//--------------------------------------
 #include "game_window.h"
 #include "key_logger.h"
 #include "pad_logger.h"
 #include "mouse.h"
 
+//--------------------------------------
 // タイマー
+//--------------------------------------
 #include "system_timer.h"
 
+//--------------------------------------
 // サウンド・設定
+//--------------------------------------
 #include "sound_manager.h"
 #include "game_settings.h"
 
+//--------------------------------------
 // Direct3D・シェーダー
+//--------------------------------------
 #include "direct3d.h"
 #include "sampler.h"
 #include "shader.h"
 
+//--------------------------------------
 // 描画リソース
+//--------------------------------------
 #include "sprite.h"
 #include "texture.h"
 #include "sprite_anim.h"
 
+//--------------------------------------
 // ゲームロジック・UI
+//--------------------------------------
 #include "scene.h"
 #include "fade.h"
 #include "debug_text.h"
 #include "text_draw.h"
 
+//======================================
+// アプリケーションエントリーポイント
+//======================================
+/**
+ * @brief  Windowsアプリケーションのエントリーポイント
+ * @param  hInstance アプリケーションのインスタンスハンドル
+ * @param  nCmdShow  ウィンドウの初期表示状態
+ * @return 終了コード (WM_QUIT の wParam)
+ * @detail サブシステムを初期化 → メインループ (更新+描画) →
+ *         初期化と逆順で終了処理、という流れを管理する。
+ */
 int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     _In_ int nCmdShow)
 {
+    //--------------------------------------
+    // 各サブシステムの初期化
+    //--------------------------------------
     // COM・DPI初期化
     (void)CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
@@ -94,27 +120,32 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     ShowWindow(hWnd, nCmdShow);
     UpdateWindow(hWnd);
 
+    //--------------------------------------
     // フレーム計測用変数
+    //--------------------------------------
     SystemTimer_Reset();
-    double fps_last_time = SystemTimer_GetTime();
-    double current_time = 0.0;
-    ULONG frame_count = 0;
-    double fps = 0.0;
-    double elapsed_time = 0.0;
+    double fps_last_time = SystemTimer_GetTime();  // 直近FPS計測時刻
+    double current_time = 0.0;                     // 現在時刻
+    ULONG  frame_count = 0;                        // 計測区間のフレーム数
+    double fps = 0.0;                              // 算出されたFPS
+    double elapsed_time = 0.0;                     // 当該フレームの経過時間
 
+    //======================================
     // メインループ
+    //======================================
     MSG msg = {};
 
     do
     {
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
+            // ウィンドウメッセージ処理
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
         else
         {
-            // FPS計測（1秒ごとに更新）
+            /*--- FPS計測 (1秒ごとに更新) ---*/
             current_time = SystemTimer_GetTime();
             double fps_elapsed_time = current_time - fps_last_time;
 
@@ -146,6 +177,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
             Fade_Draw();
 
 #if defined(DEBUG) || defined(_DEBUG)
+            // デバッグビルドのみ: FPSを画面に表示
             std::stringstream ss;
             ss << "fps:" << fps << std::endl;
             debugText.SetText(ss.str().c_str());
@@ -162,8 +194,9 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
         }
     } while (msg.message != WM_QUIT);
 
+    //--------------------------------------
     // 終了処理（初期化の逆順）
-
+    //--------------------------------------
     // シーン
     Scene_Finalize();
 

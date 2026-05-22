@@ -1,362 +1,356 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- フィルタ構成は実ディレクトリ構成をそのまま反映する。
+       対になる .cpp / .h は同じフィルタに並ぶ。 -->
   <ItemGroup>
-    <Filter Include="ソースファイル">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    <Filter Include="audio">
+      <UniqueIdentifier>{f1000001-0000-0000-0000-000000000001}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダーファイル">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    <Filter Include="config">
+      <UniqueIdentifier>{f1000002-0000-0000-0000-000000000002}</UniqueIdentifier>
     </Filter>
-    <Filter Include="シェーダーファイル">
-      <UniqueIdentifier>{a1b2c3d4-1234-5678-9abc-def012345678}</UniqueIdentifier>
+    <Filter Include="direct3d">
+      <UniqueIdentifier>{f1000003-0000-0000-0000-000000000003}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="game">
+      <UniqueIdentifier>{f1000004-0000-0000-0000-000000000004}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="game\ability">
+      <UniqueIdentifier>{f1000005-0000-0000-0000-000000000005}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="game\ability\abilities">
+      <UniqueIdentifier>{f1000006-0000-0000-0000-000000000006}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="game\boss">
+      <UniqueIdentifier>{f1000007-0000-0000-0000-000000000007}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="game\scene">
+      <UniqueIdentifier>{f1000008-0000-0000-0000-000000000008}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="game_window">
+      <UniqueIdentifier>{f1000009-0000-0000-0000-000000000009}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="input">
+      <UniqueIdentifier>{f100000a-0000-0000-0000-00000000000a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="shaders">
+      <UniqueIdentifier>{f100000b-0000-0000-0000-00000000000b}</UniqueIdentifier>
       <Extensions>hlsl;fx;fxh</Extensions>
     </Filter>
-    <Filter Include="ソースファイル\audio">
-      <UniqueIdentifier>{1a1a1a01-0000-0000-0000-000000000001}</UniqueIdentifier>
+    <Filter Include="sound">
+      <UniqueIdentifier>{f100000c-0000-0000-0000-00000000000c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ソースファイル\config">
-      <UniqueIdentifier>{1a1a1a02-0000-0000-0000-000000000002}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\direct3d">
-      <UniqueIdentifier>{1a1a1a03-0000-0000-0000-000000000003}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\game">
-      <UniqueIdentifier>{1a1a1a04-0000-0000-0000-000000000004}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\game\ability">
-      <UniqueIdentifier>{1a1a1a0a-0000-0000-0000-00000000000a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\game\ability\abilities">
-      <UniqueIdentifier>{1a1a1a0b-0000-0000-0000-00000000000b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\game\boss">
-      <UniqueIdentifier>{1a1a1a0c-0000-0000-0000-00000000000c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\game\scene">
-      <UniqueIdentifier>{1a1a1a05-0000-0000-0000-000000000005}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\game_window">
-      <UniqueIdentifier>{1a1a1a06-0000-0000-0000-000000000006}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\input">
-      <UniqueIdentifier>{1a1a1a07-0000-0000-0000-000000000007}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\sound">
-      <UniqueIdentifier>{1a1a1a08-0000-0000-0000-000000000008}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ソースファイル\utils">
-      <UniqueIdentifier>{1a1a1a09-0000-0000-0000-000000000009}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\audio">
-      <UniqueIdentifier>{2a2a2a01-0000-0000-0000-000000000001}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\config">
-      <UniqueIdentifier>{2a2a2a02-0000-0000-0000-000000000002}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\direct3d">
-      <UniqueIdentifier>{2a2a2a03-0000-0000-0000-000000000003}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\game">
-      <UniqueIdentifier>{2a2a2a04-0000-0000-0000-000000000004}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\game\ability">
-      <UniqueIdentifier>{2a2a2a0a-0000-0000-0000-00000000000a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\game\ability\abilities">
-      <UniqueIdentifier>{2a2a2a0b-0000-0000-0000-00000000000b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\game\boss">
-      <UniqueIdentifier>{2a2a2a0c-0000-0000-0000-00000000000c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\game\scene">
-      <UniqueIdentifier>{2a2a2a05-0000-0000-0000-000000000005}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\game_window">
-      <UniqueIdentifier>{2a2a2a06-0000-0000-0000-000000000006}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\input">
-      <UniqueIdentifier>{2a2a2a07-0000-0000-0000-000000000007}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\sound">
-      <UniqueIdentifier>{2a2a2a08-0000-0000-0000-000000000008}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダーファイル\utils">
-      <UniqueIdentifier>{2a2a2a09-0000-0000-0000-000000000009}</UniqueIdentifier>
+    <Filter Include="utils">
+      <UniqueIdentifier>{f100000d-0000-0000-0000-00000000000d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>ソースファイル</Filter>
-    </ClCompile>
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="audio\Audio.cpp">
-      <Filter>ソースファイル\audio</Filter>
+      <Filter>audio</Filter>
     </ClCompile>
     <ClCompile Include="config\game_settings.cpp">
-      <Filter>ソースファイル\config</Filter>
+      <Filter>config</Filter>
     </ClCompile>
     <ClCompile Include="direct3d\direct3d.cpp">
-      <Filter>ソースファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClCompile>
     <ClCompile Include="direct3d\sampler.cpp">
-      <Filter>ソースファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClCompile>
     <ClCompile Include="direct3d\shader.cpp">
-      <Filter>ソースファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClCompile>
     <ClCompile Include="direct3d\sprite.cpp">
-      <Filter>ソースファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClCompile>
     <ClCompile Include="direct3d\sprtie_anim.cpp">
-      <Filter>ソースファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClCompile>
     <ClCompile Include="direct3d\texture.cpp">
-      <Filter>ソースファイル\direct3d</Filter>
-    </ClCompile>
-    <ClCompile Include="game\ability\abilities\boss_ice_slide.cpp">
-      <Filter>ソースファイル\game\ability\abilities</Filter>
-    </ClCompile>
-    <ClCompile Include="game\ability\abilities\contemplation.cpp">
-      <Filter>ソースファイル\game\ability\abilities</Filter>
-    </ClCompile>
-    <ClCompile Include="game\ability\abilities\ice_tile.cpp">
-      <Filter>ソースファイル\game\ability\abilities</Filter>
-    </ClCompile>
-    <ClCompile Include="game\ability\abilities\line_added.cpp">
-      <Filter>ソースファイル\game\ability\abilities</Filter>
-    </ClCompile>
-    <ClCompile Include="game\ability\ability_registry.cpp">
-      <Filter>ソースファイル\game\ability</Filter>
-    </ClCompile>
-    <ClCompile Include="game\ability\default_hooks.cpp">
-      <Filter>ソースファイル\game\ability</Filter>
-    </ClCompile>
-    <ClCompile Include="game\board_ops.cpp">
-      <Filter>ソースファイル\game</Filter>
-    </ClCompile>
-    <ClCompile Include="game\boss\ice_board_boss.cpp">
-      <Filter>ソースファイル\game\boss</Filter>
+      <Filter>direct3d</Filter>
     </ClCompile>
     <ClCompile Include="game\ai.cpp">
-      <Filter>ソースファイル\game</Filter>
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="game\board.cpp">
-      <Filter>ソースファイル\game</Filter>
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\board_ops.cpp">
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="game\collision.cpp">
-      <Filter>ソースファイル\game</Filter>
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="game\fade.cpp">
-      <Filter>ソースファイル\game</Filter>
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="game\font_atlas.cpp">
-      <Filter>ソースファイル\game</Filter>
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="game\render_primitives.cpp">
-      <Filter>ソースファイル\game</Filter>
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\run_state.cpp">
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="game\text_draw.cpp">
-      <Filter>ソースファイル\game</Filter>
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="game\win_check.cpp">
-      <Filter>ソースファイル\game</Filter>
+      <Filter>game</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\ability_pool.cpp">
+      <Filter>game\ability</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\ability_registry.cpp">
+      <Filter>game\ability</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\default_hooks.cpp">
+      <Filter>game\ability</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\boss_ice_slide.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\contemplation.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\focus.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\ice_tile.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\board_expand.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\margin.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\two_hands.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\boss\ice_board_boss.cpp">
+      <Filter>game\boss</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\game.cpp">
-      <Filter>ソースファイル\game\scene</Filter>
+      <Filter>game\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\reward.cpp">
+      <Filter>game\scene</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\scene.cpp">
-      <Filter>ソースファイル\game\scene</Filter>
+      <Filter>game\scene</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\title.cpp">
-      <Filter>ソースファイル\game\scene</Filter>
+      <Filter>game\scene</Filter>
     </ClCompile>
     <ClCompile Include="game_window\game_window.cpp">
-      <Filter>ソースファイル\game_window</Filter>
+      <Filter>game_window</Filter>
     </ClCompile>
     <ClCompile Include="input\input_manager.cpp">
-      <Filter>ソースファイル\input</Filter>
+      <Filter>input</Filter>
     </ClCompile>
     <ClCompile Include="input\key_logger.cpp">
-      <Filter>ソースファイル\input</Filter>
+      <Filter>input</Filter>
     </ClCompile>
     <ClCompile Include="input\keyboard.cpp">
-      <Filter>ソースファイル\input</Filter>
+      <Filter>input</Filter>
     </ClCompile>
     <ClCompile Include="input\mouse.cpp">
-      <Filter>ソースファイル\input</Filter>
+      <Filter>input</Filter>
     </ClCompile>
     <ClCompile Include="input\pad_logger.cpp">
-      <Filter>ソースファイル\input</Filter>
+      <Filter>input</Filter>
     </ClCompile>
     <ClCompile Include="sound\sound_manager.cpp">
-      <Filter>ソースファイル\sound</Filter>
+      <Filter>sound</Filter>
     </ClCompile>
     <ClCompile Include="utils\debug_ostream.cpp">
-      <Filter>ソースファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="utils\debug_text.cpp">
-      <Filter>ソースファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="utils\system_timer.cpp">
-      <Filter>ソースファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClCompile>
     <ClCompile Include="utils\WICTextureLoader11.cpp">
-      <Filter>ソースファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="audio\Audio.h">
-      <Filter>ヘッダーファイル\audio</Filter>
+      <Filter>audio</Filter>
     </ClInclude>
     <ClInclude Include="config\game_settings.h">
-      <Filter>ヘッダーファイル\config</Filter>
+      <Filter>config</Filter>
     </ClInclude>
     <ClInclude Include="direct3d\direct3d.h">
-      <Filter>ヘッダーファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClInclude>
     <ClInclude Include="direct3d\sampler.h">
-      <Filter>ヘッダーファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClInclude>
     <ClInclude Include="direct3d\shader.h">
-      <Filter>ヘッダーファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClInclude>
     <ClInclude Include="direct3d\sprite.h">
-      <Filter>ヘッダーファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClInclude>
     <ClInclude Include="direct3d\sprite_anim.h">
-      <Filter>ヘッダーファイル\direct3d</Filter>
+      <Filter>direct3d</Filter>
     </ClInclude>
     <ClInclude Include="direct3d\texture.h">
-      <Filter>ヘッダーファイル\direct3d</Filter>
-    </ClInclude>
-    <ClInclude Include="game\ability\abilities\boss_ice_slide.h">
-      <Filter>ヘッダーファイル\game\ability\abilities</Filter>
-    </ClInclude>
-    <ClInclude Include="game\ability\abilities\contemplation.h">
-      <Filter>ヘッダーファイル\game\ability\abilities</Filter>
-    </ClInclude>
-    <ClInclude Include="game\ability\abilities\ice_tile.h">
-      <Filter>ヘッダーファイル\game\ability\abilities</Filter>
-    </ClInclude>
-    <ClInclude Include="game\ability\abilities\line_added.h">
-      <Filter>ヘッダーファイル\game\ability\abilities</Filter>
-    </ClInclude>
-    <ClInclude Include="game\ability\ability.h">
-      <Filter>ヘッダーファイル\game\ability</Filter>
-    </ClInclude>
-    <ClInclude Include="game\ability\ability_registry.h">
-      <Filter>ヘッダーファイル\game\ability</Filter>
-    </ClInclude>
-    <ClInclude Include="game\ability\default_hooks.h">
-      <Filter>ヘッダーファイル\game\ability</Filter>
-    </ClInclude>
-    <ClInclude Include="game\ability\hooks.h">
-      <Filter>ヘッダーファイル\game\ability</Filter>
+      <Filter>direct3d</Filter>
     </ClInclude>
     <ClInclude Include="game\ai.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\board.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\board_ops.h">
-      <Filter>ヘッダーファイル\game</Filter>
-    </ClInclude>
-    <ClInclude Include="game\boss\boss.h">
-      <Filter>ヘッダーファイル\game\boss</Filter>
-    </ClInclude>
-    <ClInclude Include="game\boss\ice_board_boss.h">
-      <Filter>ヘッダーファイル\game\boss</Filter>
-    </ClInclude>
-    <ClInclude Include="game\direction.h">
-      <Filter>ヘッダーファイル\game</Filter>
-    </ClInclude>
-    <ClInclude Include="game\game_state.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\collision.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\direction.h">
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\fade.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\font_atlas.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\game_state.h">
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\piece.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\render_primitives.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\run_state.h">
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\text_draw.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\win_check.h">
-      <Filter>ヘッダーファイル\game</Filter>
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\ability.h">
+      <Filter>game\ability</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\ability_pool.h">
+      <Filter>game\ability</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\ability_registry.h">
+      <Filter>game\ability</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\default_hooks.h">
+      <Filter>game\ability</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\hooks.h">
+      <Filter>game\ability</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\boss_ice_slide.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\contemplation.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\focus.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\ice_tile.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\board_expand.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\margin.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\two_hands.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\boss\boss.h">
+      <Filter>game\boss</Filter>
+    </ClInclude>
+    <ClInclude Include="game\boss\ice_board_boss.h">
+      <Filter>game\boss</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\game.h">
-      <Filter>ヘッダーファイル\game\scene</Filter>
+      <Filter>game\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\reward.h">
+      <Filter>game\scene</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\scene.h">
-      <Filter>ヘッダーファイル\game\scene</Filter>
+      <Filter>game\scene</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\title.h">
-      <Filter>ヘッダーファイル\game\scene</Filter>
+      <Filter>game\scene</Filter>
     </ClInclude>
     <ClInclude Include="game_window\game_window.h">
-      <Filter>ヘッダーファイル\game_window</Filter>
+      <Filter>game_window</Filter>
     </ClInclude>
     <ClInclude Include="input\input_manager.h">
-      <Filter>ヘッダーファイル\input</Filter>
+      <Filter>input</Filter>
     </ClInclude>
     <ClInclude Include="input\key_logger.h">
-      <Filter>ヘッダーファイル\input</Filter>
+      <Filter>input</Filter>
     </ClInclude>
     <ClInclude Include="input\keyboard.h">
-      <Filter>ヘッダーファイル\input</Filter>
+      <Filter>input</Filter>
     </ClInclude>
     <ClInclude Include="input\mouse.h">
-      <Filter>ヘッダーファイル\input</Filter>
+      <Filter>input</Filter>
     </ClInclude>
     <ClInclude Include="input\pad_logger.h">
-      <Filter>ヘッダーファイル\input</Filter>
+      <Filter>input</Filter>
     </ClInclude>
     <ClInclude Include="sound\sound_manager.h">
-      <Filter>ヘッダーファイル\sound</Filter>
+      <Filter>sound</Filter>
     </ClInclude>
     <ClInclude Include="utils\color.h">
-      <Filter>ヘッダーファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="utils\debug_ostream.h">
-      <Filter>ヘッダーファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="utils\debug_text.h">
-      <Filter>ヘッダーファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="utils\DirectXTex.h">
-      <Filter>ヘッダーファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="utils\helper.h">
-      <Filter>ヘッダーファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="utils\system_timer.h">
-      <Filter>ヘッダーファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClInclude>
     <ClInclude Include="utils\WICTextureLoader11.h">
-      <Filter>ヘッダーファイル\utils</Filter>
+      <Filter>utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\shader_pixel_2d.hlsl">
-      <Filter>シェーダーファイル</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
     <FxCompile Include="shaders\shader_vertex_2d.hlsl">
-      <Filter>シェーダーファイル</Filter>
+      <Filter>shaders</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="utils\DirectXTex.inl" />
+    <None Include="utils\DirectXTex.inl">
+      <Filter>utils</Filter>
+    </None>
   </ItemGroup>
 </Project>

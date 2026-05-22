@@ -1,8 +1,8 @@
 /****************************************
- * @file scene.cpp
- * @brief シーン管理 (2D版)
+ * @file   scene.cpp
+ * @brief  シーン管理 (2D版)
  * @author Natsume Shidara
- * @date 2025/07/10
+ * @date   2025/07/10
  * @update 2026/05/15 - 〇×ローグライト用2D版へ書き換え
  ****************************************/
 
@@ -16,11 +16,18 @@
 #include "sprite.h"
 #include "sound_manager.h"
 
-static auto g_Scene = Scene::TITLE;
-static Scene g_SceneNext = g_Scene;
+//--------------------------------------
+// 内部状態
+//--------------------------------------
+static auto  g_Scene     = Scene::TITLE;  // 現在のシーン
+static Scene g_SceneNext = g_Scene;       // 次フレームで切り替える予約先シーン
 
+//======================================
+// シーン初期化／終了
+//======================================
 void Scene_Initialize()
 {
+    // 現在シーンに応じた初期化関数へ振り分ける
     switch (g_Scene)
     {
     case Scene::TITLE:  Title_Initialize();  break;
@@ -32,6 +39,7 @@ void Scene_Initialize()
 
 void Scene_Finalize()
 {
+    // 現在シーンに応じた終了関数へ振り分ける
     switch (g_Scene)
     {
     case Scene::TITLE:  Title_Finalize();  break;
@@ -41,8 +49,12 @@ void Scene_Finalize()
     }
 }
 
+//======================================
+// シーン更新
+//======================================
 void Scene_Update(double elapsed_time)
 {
+    // 入力状態を先に更新してから各シーンへ渡す
     InputManager_Update();
 
     switch (g_Scene)
@@ -54,14 +66,19 @@ void Scene_Update(double elapsed_time)
     }
 }
 
+//======================================
+// シーン描画
+//======================================
 void Scene_Draw()
 {
+    /*--- 2D描画用のレンダーステートを設定 ---*/
     Direct3D_SetBackBufferRenderTarget();
     Direct3D_Clear();
-    Direct3D_DepthStencilStateDepthIsEnable(false);
+    Direct3D_DepthStencilStateDepthIsEnable(false);   // 2Dなので深度テスト無効
     Direct3D_SetBlendState(BlendMode::Alpha);
     Sprite_Begin();
 
+    /*--- 現在シーンの描画関数へ振り分け ---*/
     switch (g_Scene)
     {
     case Scene::TITLE:  Title_Draw();  break;
@@ -71,11 +88,15 @@ void Scene_Draw()
     }
 }
 
+//======================================
+// シーン遷移
+//======================================
 void Scene_Refresh()
 {
+    // 予約先が現在シーンと異なる場合のみ、終了→切替→初期化を行う
     if (g_Scene != g_SceneNext)
     {
-        SoundManager_StopAll();
+        SoundManager_StopAll();   // 旧シーンの再生音を停止
         Scene_Finalize();
         g_Scene = g_SceneNext;
         Scene_Initialize();
@@ -84,5 +105,6 @@ void Scene_Refresh()
 
 void Scene_Change(Scene scene)
 {
+    // 実際の切り替えは Scene_Refresh() まで遅延させる
     g_SceneNext = scene;
 }

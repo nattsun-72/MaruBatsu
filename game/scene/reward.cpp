@@ -1,8 +1,8 @@
 /****************************************
- * @file reward.cpp
- * @brief 報酬シーン実装
+ * @file   reward.cpp
+ * @brief  報酬シーン実装
  * @author Natsume Shidara
- * @date 2026/05/15
+ * @date   2026/05/15
  *
  * ボス撃破後に呼ばれ、3枚のカードからアビリティを1つ選ばせる。
  * 選択完了で Scene::GAME へ遷移し、次のボス戦開始。
@@ -22,26 +22,35 @@
 
 #include <DirectXMath.h>
 
+//--------------------------------------
+// 定数・内部状態 (無名名前空間)
+//--------------------------------------
 namespace
 {
-    // カード見た目
-    constexpr float CARD_W       = 280.0f;
-    constexpr float CARD_H       = 360.0f;
-    constexpr float CARD_GAP     = 40.0f;
-    constexpr float CARD_BORDER  = 4.0f;
-    constexpr float TEXT_TITLE   = 28.0f;
-    constexpr float TEXT_RARITY  = 16.0f;
-    constexpr float TEXT_DESC    = 16.0f;
-    constexpr float TEXT_HEADER  = 36.0f;
-    constexpr float TEXT_HINT    = 18.0f;
+    // カードの見た目に関する寸法・文字サイズ
+    constexpr float CARD_W       = 280.0f;   // カード幅
+    constexpr float CARD_H       = 360.0f;   // カード高さ
+    constexpr float CARD_GAP     = 40.0f;    // カード間の余白
+    constexpr float CARD_BORDER  = 4.0f;     // 縁取りの太さ
+    constexpr float TEXT_TITLE   = 28.0f;    // アビリティ名
+    constexpr float TEXT_RARITY  = 16.0f;    // レアリティ表記
+    constexpr float TEXT_DESC    = 16.0f;    // 説明文
+    constexpr float TEXT_HEADER  = 36.0f;    // 見出し
+    constexpr float TEXT_HINT    = 18.0f;    // 操作ヒント
 
-    const DirectX::XMFLOAT4 COLOR_BG       { 0.04f, 0.04f, 0.08f, 1.0f };
-    const DirectX::XMFLOAT4 COLOR_CARD_BG  { 0.10f, 0.10f, 0.15f, 1.0f };
-    const DirectX::XMFLOAT4 COLOR_CARD_HOVER { 0.18f, 0.18f, 0.26f, 1.0f };
-    const DirectX::XMFLOAT4 COLOR_TEXT     { 0.90f, 0.92f, 0.98f, 1.0f };
-    const DirectX::XMFLOAT4 COLOR_HINT     { 0.55f, 0.60f, 0.70f, 1.0f };
-    const DirectX::XMFLOAT4 COLOR_HEADER   { 0.60f, 1.00f, 0.60f, 1.0f };
+    // 配色 (RGBA)
+    const DirectX::XMFLOAT4 COLOR_BG         { 0.04f, 0.04f, 0.08f, 1.0f };  // 背景
+    const DirectX::XMFLOAT4 COLOR_CARD_BG    { 0.10f, 0.10f, 0.15f, 1.0f };  // カード本体
+    const DirectX::XMFLOAT4 COLOR_CARD_HOVER { 0.18f, 0.18f, 0.26f, 1.0f };  // ホバー時の本体
+    const DirectX::XMFLOAT4 COLOR_TEXT       { 0.90f, 0.92f, 0.98f, 1.0f };  // 標準文字
+    const DirectX::XMFLOAT4 COLOR_HINT       { 0.55f, 0.60f, 0.70f, 1.0f };  // 補助文字
+    const DirectX::XMFLOAT4 COLOR_HEADER     { 0.60f, 1.00f, 0.60f, 1.0f };  // 見出し文字
 
+    /**
+     * @brief  レアリティに対応する表示色を返す
+     * @param  r レアリティ
+     * @return 縁取り・レアリティ表記に使う色
+     */
     DirectX::XMFLOAT4 RarityColor(Rarity r)
     {
         switch (r)
@@ -55,6 +64,11 @@ namespace
         return { 1, 1, 1, 1 };
     }
 
+    /**
+     * @brief  レアリティに対応する日本語名を返す
+     * @param  r レアリティ
+     * @return レアリティ名文字列
+     */
     const char* RarityName(Rarity r)
     {
         switch (r)
@@ -68,24 +82,42 @@ namespace
         return "";
     }
 
+    /**
+     * @brief  index 番目のカードの左端X座標を算出する
+     * @param  index   カード番号 (0始まり)
+     * @param  screenW 画面幅
+     * @param  total   カード総数
+     * @return カード左端のX座標 (カード群は画面中央に配置)
+     */
     float CardOriginX(int index, float screenW, int total)
     {
         const float totalW = total * CARD_W + (total - 1) * CARD_GAP;
         const float startX = (screenW - totalW) * 0.5f;
         return startX + index * (CARD_W + CARD_GAP);
     }
+
+    /**
+     * @brief  カードの上端Y座標を算出する
+     * @param  screenH 画面高さ
+     * @return カード上端のY座標 (画面中央やや下寄り)
+     */
     float CardOriginY(float screenH)
     {
         return (screenH - CARD_H) * 0.5f + 20.0f;
     }
 
-    int g_HoverIndex = -1;
+    int g_HoverIndex = -1;   // マウスが乗っているカード番号 (-1 = なし)
 }
 
+//======================================
+// 初期化／終了
+//======================================
 void Reward_Initialize()
 {
     Prim::Initialize();
     Text::Initialize();
+
+    // 報酬候補が未生成なら生成する
     if (RunState::RewardChoices().empty())
     {
         RunState::GenerateRewardChoices();
@@ -97,6 +129,9 @@ void Reward_Finalize()
 {
 }
 
+//======================================
+// 更新
+//======================================
 void Reward_Update(double /*elapsed_time*/)
 {
     const auto& choices = RunState::RewardChoices();
@@ -108,6 +143,7 @@ void Reward_Update(double /*elapsed_time*/)
     const auto& mouse   = InputManager_GetMouseState();
     const float oy      = CardOriginY(screenH);
 
+    /*--- マウスが乗っているカードを判定 ---*/
     g_HoverIndex = -1;
     for (int i = 0; i < total; ++i)
     {
@@ -120,31 +156,35 @@ void Reward_Update(double /*elapsed_time*/)
         }
     }
 
+    /*--- 左クリックで選択を確定 → プレイヤー所持に追加して GAME へ ---*/
     if (InputManager_IsMouseLeftTrigger() && g_HoverIndex >= 0)
     {
-        // 選択を確定 → プレイヤー所持に追加して GAME へ
         RunState::PlayerAbilities().push_back(choices[g_HoverIndex]);
         RunState::RewardChoices().clear();
         Scene_Change(Scene::GAME);
         return;
     }
 
+    /*--- ESC でタイトルへ戻る (ラン中断扱い) ---*/
     if (Keyboard_IsKeyDown(KK_ESCAPE))
     {
-        // タイトルに戻る場合はラン中断扱い
         RunState::RewardChoices().clear();
         Scene_Change(Scene::TITLE);
     }
 }
 
+//======================================
+// 描画
+//======================================
 void Reward_Draw()
 {
     const float screenW = static_cast<float>(Direct3D_GetBackBufferWidth());
     const float screenH = static_cast<float>(Direct3D_GetBackBufferHeight());
 
+    // 背景を塗りつぶす
     Prim::DrawRect(0, 0, screenW, screenH, COLOR_BG);
 
-    // ヘッダ
+    /*--- 見出しを上部中央に描画 ---*/
     const char* header = "報酬を選択";
     const float hw = Text::MeasureWidth(header, TEXT_HEADER);
     Text::Draw((screenW - hw) * 0.5f, 60.0f, header, TEXT_HEADER, COLOR_HEADER);
@@ -153,37 +193,38 @@ void Reward_Draw()
     const int total = static_cast<int>(choices.size());
     const float oy = CardOriginY(screenH);
 
+    /*--- 報酬カードを1枚ずつ描画 ---*/
     for (int i = 0; i < total; ++i)
     {
         const auto& ability = choices[i];
         const float ox = CardOriginX(i, screenW, total);
         const auto rarityColor = RarityColor(ability->rarity);
 
-        // 縁取り(レアリティ色)
+        // 縁取り (レアリティ色)
         Prim::DrawRect(ox - CARD_BORDER, oy - CARD_BORDER,
                        CARD_W + CARD_BORDER * 2, CARD_H + CARD_BORDER * 2,
                        rarityColor);
-        // 本体
+        // 本体 (ホバー中は明るい色)
         const auto& bodyColor = (i == g_HoverIndex) ? COLOR_CARD_HOVER : COLOR_CARD_BG;
         Prim::DrawRect(ox, oy, CARD_W, CARD_H, bodyColor);
 
-        // レアリティ表記
+        // レアリティ表記 (カード上部中央)
         const char* rarText = RarityName(ability->rarity);
         const float rw = Text::MeasureWidth(rarText, TEXT_RARITY);
         Text::Draw(ox + (CARD_W - rw) * 0.5f, oy + 18.0f,
                    rarText, TEXT_RARITY, rarityColor);
 
-        // 名前
+        // アビリティ名 (中央寄せ)
         const float nw = Text::MeasureWidth(ability->name.c_str(), TEXT_TITLE);
         Text::Draw(ox + (CARD_W - nw) * 0.5f, oy + 60.0f,
                    ability->name.c_str(), TEXT_TITLE, COLOR_TEXT);
 
-        // 説明 (改行は description 内の \n で明示済み)
+        // 説明文 (改行は description 内の \n で明示済み)
         Text::Draw(ox + 16.0f, oy + 130.0f, ability->description.c_str(),
                    TEXT_DESC, COLOR_HINT);
     }
 
-    // ヒント
+    /*--- 操作ヒントを下部中央に描画 ---*/
     const char* hint = "カードをクリックで選択    [ESC] ラン中断";
     const float hwh = Text::MeasureWidth(hint, TEXT_HINT);
     Text::Draw((screenW - hwh) * 0.5f, screenH - 40.0f,

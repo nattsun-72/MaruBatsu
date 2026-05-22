@@ -28,4 +28,10 @@ obj/
 *.userosscache
 *.sln.docstates
 
+# Claude Code session data / worktrees
+.claude/
+
+# Post-build shader copies at project root (Win32 PostBuildEvent output)
+/*.cso
+
 # Others

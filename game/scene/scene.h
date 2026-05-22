@@ -1,9 +1,9 @@
-﻿/****************************************
+/****************************************
  * @file scene.h
- * @brief シーン管理
+ * @brief シーン管理 (2D版)
  * @author Natsume Shidara
  * @date 2025/07/10
- * @update 2026/01/13 - Settings画面追加
+ * @update 2026/05/15 - 〇×ローグライト用2D版へ書き換え
  ****************************************/
 
 #ifndef SCENE_H
@@ -14,8 +14,7 @@ enum class Scene
 {
     TITLE,
     GAME,
-    RESULT,
-    SETTINGS,  // 設定画面
+    REWARD,
 };
 
 /** @brief シーン初期化 */
@@ -27,7 +26,7 @@ void Scene_Finalize();
 /** @brief シーン更新 */
 void Scene_Update(double elapsed_time);
 
-/** @brief シーン描画（シャドウマップ・メイン・UI） */
+/** @brief シーン描画（2D） */
 void Scene_Draw();
 
 /** @brief シーン遷移の確定処理（毎フレーム呼ぶ） */

@@ -1,9 +1,9 @@
-﻿/****************************************
+/****************************************
  * @file main.cpp
- * @brief アプリケーションエントリーポイント
+ * @brief アプリケーションエントリーポイント (2D版)
  * @author Natsume Shidara
  * @date 2025/06/06
- * @update 2026/02/25
+ * @update 2026/05/15 - 〇×ローグライト用2D版へスリム化
  *
  * WinMainを含むメインループの管理。
  * 各サブシステムの初期化・終了を制御し、
@@ -36,35 +36,17 @@
 #include "direct3d.h"
 #include "sampler.h"
 #include "shader.h"
-#include "shader3d.h"
-#include "shader_billboard.h"
-#include "shader3d_unlit.h"
-#include "shader_skinned.h"
 
 // 描画リソース
 #include "sprite.h"
 #include "texture.h"
 #include "sprite_anim.h"
 
-// 3Dプリミティブ・ライティング
-#include "cube.h"
-#include "grid.h"
-#include "meshfield.h"
-#include "light.h"
-
 // ゲームロジック・UI
 #include "scene.h"
 #include "fade.h"
 #include "debug_text.h"
 
-/****************************************
- * @brief アプリケーションエントリーポイント
- * @param hInstance     現在のインスタンスハンドル
- * @param (unused)      前のインスタンスハンドル（Win32では常にNULL）
- * @param (unused)      コマンドライン引数文字列
- * @param nCmdShow      ウィンドウ表示状態
- * @return 終了コード
- ****************************************/
 int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     _In_ int nCmdShow)
 {
@@ -85,26 +67,16 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     SoundManager_Initialize();
     GameSettings_Initialize();
 
-    // Direct3D・シェーダー初期化
+    // Direct3D・2Dシェーダー初期化
     Direct3D_Initialize(hWnd);
     Sampler_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
     Shader_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
-    Shader3D_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
-    Shader_Billboard_Initialize();
-    Shader3D_Unlit_Initialize();
-    ShaderSkinned_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
 
     // 描画リソース初期化
     Sprite_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
     Texture_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
     SpriteAnim_Initialize();
     Fade_Initialize();
-
-    // 3Dプリミティブ・ライティング初期化
-    Grid_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
-    MeshField_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
-    Cube_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
-    Light_Initialize(Direct3D_GetDevice(), Direct3D_GetContext());
 
     // デバッグテキスト初期化
     hal::DebugText debugText(Direct3D_GetDevice(), Direct3D_GetContext(),
@@ -122,7 +94,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     UpdateWindow(hWnd);
 
     // フレーム計測用変数
-    SystemTimer_Reset(); // タイマー計測開始
+    SystemTimer_Reset();
     double fps_last_time = SystemTimer_GetTime();
     double current_time = 0.0;
     ULONG frame_count = 0;
@@ -136,7 +108,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     {
         if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
-            // Windowsメッセージ処理
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
@@ -153,7 +124,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
                 frame_count = 0;
             }
 
-            // デルタタイム取得
             elapsed_time += SystemTimer_GetElapsedTime();
 
             //----------------------------------------------------------
@@ -167,7 +137,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
 
             //----------------------------------------------------------
             // 描画処理
-            // Scene_Drawでオフスクリーン・メイン・UIの全パスを実行
             //----------------------------------------------------------
             Scene_Draw();
 
@@ -194,12 +163,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
 
     // 終了処理（初期化の逆順）
 
-    // 3Dプリミティブ・ライティング
-    Light_Finalize();
-    Cube_Finalize();
-    MeshField_Finalize();
-    Grid_Finalize();
-
     // シーン
     Scene_Finalize();
 
@@ -214,10 +177,6 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     Sprite_Finalize();
 
     // シェーダー
-    ShaderSkinned_Finalize();
-    Shader3D_Unlit_Finalize();
-    Shader_Billboard_Finalize();
-    Shader3D_Finalize();
     Shader_Finalize();
 
     // Direct3D・サンプラー

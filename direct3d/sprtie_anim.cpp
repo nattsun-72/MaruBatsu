@@ -14,7 +14,6 @@
 
 #include "debug_ostream.h"
 
-#include "billboard.h"
 using namespace DirectX;
 
 namespace {
@@ -117,19 +116,6 @@ void SpriteAnim_Draw(int playid, float dx, float dy, float dw, float dh)
         static_cast<float>(pPatternData->m_PatternSize.y),
         dw, dh
     );
-}
-
-/** @brief 現在のパターンに基づきビルボードアニメーションを3D空間に描画 */
-void BillboardAnim_Draw(int playid, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT2& scale, const DirectX::XMFLOAT2& pivot)
-{
-    const int pattern_id = g_AnimPlay[playid].m_PatternId;
-    const int pattern_num = g_AnimPlay[playid].m_PatternNum;
-    AnimPatternData* pPatternData = &g_AnimPattern[pattern_id];
-
-    const XMFLOAT4 texCut = { static_cast<float>(pPatternData->m_StartPosition.x + pPatternData->m_PatternSize.x * (pattern_num % pPatternData->m_HPatternMax)), static_cast<float>(pPatternData->m_StartPosition.y + pPatternData->m_PatternSize.y * (pattern_num / pPatternData->m_HPatternMax)),
-                        static_cast<float>(pPatternData->m_PatternSize.x), static_cast<float>(pPatternData->m_PatternSize.y) };
-
-    Billboard_Draw(pPatternData->m_TextureId,position, scale, texCut, pivot);
 }
 
 /**

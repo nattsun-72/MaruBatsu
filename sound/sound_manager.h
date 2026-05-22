@@ -1,62 +1,27 @@
-﻿/****************************************
+/****************************************
  * @file sound_manager.h
- * @brief ゲーム全体のサウンド管理
+ * @brief ゲーム全体のサウンド管理 (2D版・最小構成)
  * @author Natsume Shidara
  * @date 2026/01/13
- * @update 2026/02/22 - フィーバーティアに応じたBGMピッチ変化
+ * @update 2026/05/15 - 〇×ローグライト用にスリム化 (BGM/UI SE のみ)
  ****************************************/
 
 #ifndef SOUND_MANAGER_H
 #define SOUND_MANAGER_H
 
- // サウンドID定義
+// サウンドID定義
 enum SoundID
 {
     // BGM
-    SOUND_BGM_TITLE,        // タイトル画面
-    SOUND_BGM_GAME,         // ゲーム中
-    SOUND_BGM_RESULT,       // リザルト画面
+    SOUND_BGM_TITLE,
+    SOUND_BGM_GAME,
+    SOUND_BGM_RESULT,
 
-    // SE - プレイヤー
-    SOUND_SE_SLASH,         // 斬撃（通常）
-    SOUND_SE_SLASH_HEAVY,   // 斬撃（強攻撃）
-    SOUND_SE_SLASH_HIT,     // 斬撃ヒット
-    SOUND_SE_PLAYER_DAMAGE, // プレイヤーダメージ
-    SOUND_SE_JUMP,          // ジャンプ
-    SOUND_SE_DOUBLE_JUMP,   // 二段ジャンプ
-    SOUND_SE_DASH_CHARGE,   // エアダッシュ溜め
-    SOUND_SE_DASH,          // エアダッシュ
-    SOUND_SE_STEP,          // ステップ
-    SOUND_SE_LAND,          // 着地
-
-    // SE - コンボ
-    SOUND_SE_COMBO_1,       // コンボ（低）1-9
-    SOUND_SE_COMBO_2,       // コンボ（中）10-19
-    SOUND_SE_COMBO_3,       // コンボ（高）20-49
-    SOUND_SE_COMBO_4,       // コンボ（最高）50+
-
-    // SE - 敵（地上型）
-    SOUND_SE_ENEMY_FIRE,    // 敵の発射音
-    SOUND_SE_ENEMY_DEATH,   // 敵撃破
-    SOUND_SE_ENEMY_SLICE,   // 敵切断
-
-    // SE - 敵（飛行型）
-    SOUND_SE_FLYING_CHARGE_READY,  // 飛行敵：突撃準備
-    SOUND_SE_FLYING_CHARGE,        // 飛行敵：突撃
-    SOUND_SE_FLYING_WHOOSH,        // 飛行敵：風切り音
-
-    // SE - UI
-    SOUND_SE_SELECT,        // 選択音
-    SOUND_SE_DECIDE,        // 決定音
-    SOUND_SE_CANCEL,        // キャンセル音
-    SOUND_SE_PAUSE,         // ポーズ
-
-    // SE - タイトル
-    SOUND_SE_TITLE_SLASH,   // タイトル画面の斬撃演出
-
-    // SE - リザルト
-    SOUND_SE_SCORE_COUNT,   // スコアカウントアップ
-    SOUND_SE_SCORE_FINISH,  // スコア表示完了
+    // SE - UI（β以降で実装）
+    SOUND_SE_SELECT,
+    SOUND_SE_DECIDE,
+    SOUND_SE_CANCEL,
+    SOUND_SE_PAUSE,
 
     // 総数
     SOUND_MAX
@@ -75,10 +40,7 @@ void SoundManager_SetBGMVolume(float volume);  // 0.0 ~ 1.0
 void SoundManager_PlaySE(SoundID id);
 void SoundManager_SetSEVolume(float volume);   // 0.0 ~ 1.0
 
-// コンボ用（コンボ数に応じた音を自動選択）
-void SoundManager_PlayComboSE(int comboCount);
-
-// 更新（BGMピッチ補間など）
+// 更新
 void SoundManager_Update(float dt);
 
 // 一括停止

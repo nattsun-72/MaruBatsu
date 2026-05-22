@@ -24,9 +24,6 @@ void SpriteAnim_Update(double elapsed_time);
 /** @brief 2Dスプライトアニメーション描画 */
 void SpriteAnim_Draw(int playid, float dx, float dy, float dw, float dh);
 
-/** @brief ビルボードアニメーション描画（3D空間） */
-void BillboardAnim_Draw(int playId, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT2& scale, const DirectX::XMFLOAT2& pivot = {0.0f,0.0f});
-
 /**
  * @brief アニメーションパターンを登録
  * @param textureId テクスチャ管理番号

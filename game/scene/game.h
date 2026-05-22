@@ -1,8 +1,9 @@
-﻿/****************************************
+/****************************************
  * @file game.h
- * @brief ゲームシーンの管理
+ * @brief ゲームシーン (Day 1 スタブ)
  * @author Natsume Shidara
  * @date 2025/07/01
+ * @update 2026/05/15 - 〇×ローグライト用スタブへ書き換え
  ****************************************/
 #ifndef GAME_H
 #define GAME_H
@@ -19,6 +20,4 @@ void Game_Update(double elapsed_time);
 /** @brief ゲームシーン描画 */
 void Game_Draw();
 
-/** @brief ゲームシーンのシャドウマップ描画 */
-void Game_DrawShadow();
-#endif
+#endif // GAME_H

@@ -492,6 +492,9 @@ namespace
         g_State.board.Resize(boardW, boardH);
 
         BeginTurn(Piece::Player);
+
+        // この戦況(ボス番号+所持アビリティ)をセーブ。アプリ終了後も再開できる。
+        RunState::SaveRun();
     }
 
     //======================================
@@ -1628,6 +1631,7 @@ void Game_Update(double elapsed_time)
                 // (ここで GenerateRewardChoices を呼ばないことで、範囲外ボスへの
                 //  アクセスと空報酬の再生成を構造的に回避する)
                 RunState::MarkRunCleared();
+                RunState::ClearSave();   // ラン完走 → セーブ削除
                 Scene_Change(Scene::TITLE);
             }
             else

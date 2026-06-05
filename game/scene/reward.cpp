@@ -167,10 +167,15 @@ void Reward_Update(double /*elapsed_time*/)
         if (RunState::IsRunComplete())
         {
             RunState::MarkRunCleared();
+            RunState::ClearSave();
             Scene_Change(Scene::TITLE);
         }
         else
         {
+            // 勝ち進行+選んだ報酬をこの時点で保存しておく。
+            // (次戦の ResetMatch まで保存を遅らせると、報酬画面中の終了で
+            //  撃破済みボスの再戦・報酬喪失が起きるため)
+            RunState::SaveRun();
             Scene_Change(Scene::GAME);
         }
         return;

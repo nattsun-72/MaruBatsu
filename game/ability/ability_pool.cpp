@@ -34,6 +34,16 @@ namespace AbilityPool
         };
     }
 
+    std::shared_ptr<Ability> CreateByName(const std::string& name)
+    {
+        // 全候補を生成し、名前が一致した新規インスタンスを返す
+        for (auto& a : CreateAll())
+        {
+            if (a->name == name) return a;
+        }
+        return nullptr;  // 該当なし
+    }
+
     std::vector<std::shared_ptr<Ability>>
     PickRandom(int count, const std::vector<std::string>& excludeNames)
     {

@@ -35,6 +35,13 @@ namespace AbilityPool
      */
     std::vector<std::shared_ptr<Ability>>
     PickRandom(int count, const std::vector<std::string>& excludeNames = {});
+
+    /**
+     * @brief  アビリティ名から新規インスタンスを1つ生成する (セーブ復元用)
+     * @param  name 生成したいアビリティ名 (CreateAll に存在するもの)
+     * @return 一致した新規インスタンス。見つからなければ nullptr。
+     */
+    std::shared_ptr<Ability> CreateByName(const std::string& name);
 }
 
 #endif // ABILITY_POOL_H

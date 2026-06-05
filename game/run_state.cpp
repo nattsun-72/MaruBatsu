@@ -7,6 +7,9 @@
 #include "run_state.h"
 #include "ability/ability_pool.h"
 
+#include <string>
+#include <vector>
+
 //--------------------------------------
 // 内部状態
 //--------------------------------------
@@ -41,7 +44,13 @@ namespace RunState
 
     void GenerateRewardChoices()
     {
+        // 取得済みの「一度限り」アビリティ名を集め、抽選候補から除外する
+        std::vector<std::string> excludeNames;
+        for (const auto& a : g_PlayerAbilities)
+        {
+            if (a->unique) excludeNames.push_back(a->name);
+        }
         // アビリティプールから3つをランダム抽選して報酬候補とする
-        g_RewardChoices = AbilityPool::PickRandom(3);
+        g_RewardChoices = AbilityPool::PickRandom(3, excludeNames);
     }
 }

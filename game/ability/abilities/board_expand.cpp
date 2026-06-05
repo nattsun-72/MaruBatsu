@@ -18,6 +18,7 @@ BoardExpandAbility::BoardExpandAbility()
     name        = "盤面拡張";
     description = "盤面が3×3から\n4×4に広がる";
     rarity      = Rarity::Epic;
+    unique      = true;   // 2個目を取得しても盤面サイズは変わらないため一度限り
 }
 
 //======================================

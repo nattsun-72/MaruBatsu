@@ -15,6 +15,7 @@
 //--------------------------------------
 #include "ability/ability.h"
 #include <memory>
+#include <string>
 #include <vector>
 
 //======================================
@@ -27,10 +28,13 @@ namespace AbilityPool
 
     /**
      * @brief  プールから指定個数をランダム抽選する (重複なし)
-     * @param  count 抽選する個数
+     * @param  count        抽選する個数
+     * @param  excludeNames 抽選候補から除外するアビリティ名。取得済みの
+     *                      一度限りアビリティ等を渡す。既定は除外なし。
      * @return 抽選されたアビリティ一覧
      */
-    std::vector<std::shared_ptr<Ability>> PickRandom(int count);
+    std::vector<std::shared_ptr<Ability>>
+    PickRandom(int count, const std::vector<std::string>& excludeNames = {});
 }
 
 #endif // ABILITY_POOL_H

@@ -15,6 +15,7 @@ TwoHandsAbility::TwoHandsAbility()
     name        = "二手打ち";
     description = "1ターンに2回\n連続で配置できる";
     rarity      = Rarity::Rare;
+    unique      = true;   // 着手数は2に固定で、2個目を取得しても増えないため一度限り
 }
 
 //======================================

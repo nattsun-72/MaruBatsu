@@ -34,10 +34,20 @@ namespace AbilityPool
         };
     }
 
-    std::vector<std::shared_ptr<Ability>> PickRandom(int count)
+    std::vector<std::shared_ptr<Ability>>
+    PickRandom(int count, const std::vector<std::string>& excludeNames)
     {
-        // 全候補をシャッフルし、先頭 count 個を取り出す
         auto all = CreateAll();
+
+        // 除外名に該当する候補 (取得済みの一度限りアビリティ等) を取り除く
+        all.erase(std::remove_if(all.begin(), all.end(),
+            [&](const std::shared_ptr<Ability>& a)
+            {
+                return std::find(excludeNames.begin(), excludeNames.end(),
+                                 a->name) != excludeNames.end();
+            }), all.end());
+
+        // 残った候補をシャッフルし、先頭 count 個を取り出す
         static std::mt19937 rng(std::random_device{}());
         std::shuffle(all.begin(), all.end(), rng);
         if (static_cast<int>(all.size()) > count) all.resize(count);

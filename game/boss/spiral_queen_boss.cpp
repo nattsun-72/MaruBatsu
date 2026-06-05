@@ -5,6 +5,7 @@
  * @date   2026/06/05
  ****************************************/
 #include "spiral_queen_boss.h"
+#include "ability/abilities/boss_spiral_rotate.h"
 #include "ability/abilities/contemplation.h"
 
 //======================================
@@ -13,7 +14,7 @@
 SpiralQueenBoss::SpiralQueenBoss()
 {
     name        = "螺旋の女王";
-    description = "盤面が回転する（実装予定）";
+    description = "駒を置くたび盤面が回転する";
     difficulty  = 2;
 }
 
@@ -22,9 +23,8 @@ SpiralQueenBoss::SpiralQueenBoss()
 //======================================
 std::vector<std::shared_ptr<Ability>> SpiralQueenBoss::GetBossAbilities()
 {
-    // W1第1増分: ギミック未実装。空を返すと通常の〇×として成立する。
-    // 回転ギミック(IBoardModifier系)は後続増分でここに追加する。
-    return {};
+    // ボス側ギミック: 設置のたび盤面を90度回転させる
+    return { std::make_shared<BossSpiralRotateAbility>() };
 }
 
 std::shared_ptr<Ability> SpiralQueenBoss::GetRewardAbility()

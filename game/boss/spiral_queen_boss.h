@@ -4,9 +4,8 @@
  * @author Natsume Shidara
  * @date   2026/06/05
  *
- * 盤面が回転するギミックを持つ予定のボス。難易度★2。
- * W1第1増分ではギミック未実装のスタブ(通常〇×として成立)。
- * 回転ギミックは IBoardModifier 系として後続増分で本実装する。
+ * 駒を置くたび盤面が90度回転するギミックを持つボス。難易度★2。
+ * ギミックは BossSpiralRotateAbility (IPlacementHandler) で実現する。
  ****************************************/
 #ifndef SPIRAL_QUEEN_BOSS_H
 #define SPIRAL_QUEEN_BOSS_H

@@ -93,4 +93,44 @@ namespace BoardOps
         if (outMoves) outMoves->push_back({ x, y, nx, ny, p });
         return true;
     }
+
+    //======================================
+    // 盤面回転
+    //======================================
+    void Rotate90(Board& board, bool clockwise, std::vector<Move>* outMoves)
+    {
+        const int n = board.width;
+        if (n != board.height) return;   // 正方盤のみ対応
+        if (n <= 1)            return;   // 1マス以下は回転不要
+
+        /*--- 回転後の配置を一時バッファへ作る ---*/
+        // 時計回り  : (x,y) -> (n-1-y, x)
+        // 反時計回り: (x,y) -> (y, n-1-x)
+        std::vector<Piece> rotated(static_cast<size_t>(n) * n, Piece::Empty);
+        for (int y = 0; y < n; ++y)
+        {
+            for (int x = 0; x < n; ++x)
+            {
+                const Piece p  = board.Get(x, y);
+                const int   nx = clockwise ? (n - 1 - y) : (y);
+                const int   ny = clockwise ? (x)         : (n - 1 - x);
+                rotated[static_cast<size_t>(ny) * n + nx] = p;
+
+                // 実際に位置が変わる駒だけ移動記録へ (中央マスは動かない)
+                if (outMoves && p != Piece::Empty && (nx != x || ny != y))
+                {
+                    outMoves->push_back({ x, y, nx, ny, p });
+                }
+            }
+        }
+
+        /*--- 盤面へ書き戻す ---*/
+        for (int y = 0; y < n; ++y)
+        {
+            for (int x = 0; x < n; ++x)
+            {
+                board.Set(x, y, rotated[static_cast<size_t>(y) * n + x]);
+            }
+        }
+    }
 }

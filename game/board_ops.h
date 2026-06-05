@@ -68,6 +68,20 @@ namespace BoardOps
      */
     bool SlideOne(Board& board, int x, int y, Direction dir,
                   std::vector<Move>* outMoves = nullptr);
+
+    //--------------------------------------
+    // 回転操作
+    //--------------------------------------
+    /**
+     * @brief  盤面を90度回転させる (正方盤のみ)
+     * @detail 盤面の全駒を時計回り/反時計回りに90度回転する。
+     *         縦横サイズが異なる盤面では何もしない(現状の盤面は常に正方)。
+     *         「螺旋の女王」の盤面回転ギミックから利用する。
+     * @param  board     対象の盤面 (直接書き換える)
+     * @param  clockwise true=時計回り / false=反時計回り
+     * @param  outMoves  非nullなら、移動した駒の記録を追記する(アニメ用)
+     */
+    void Rotate90(Board& board, bool clockwise, std::vector<Move>* outMoves = nullptr);
 }
 
 #endif // BOARD_OPS_H

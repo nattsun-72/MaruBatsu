@@ -205,6 +205,7 @@
     <ClCompile Include="direct3d\texture.cpp" />
     <ClCompile Include="game\ability\abilities\board_expand.cpp" />
     <ClCompile Include="game\ability\abilities\boss_ice_slide.cpp" />
+    <ClCompile Include="game\ability\abilities\boss_spiral_rotate.cpp" />
     <ClCompile Include="game\ability\abilities\contemplation.cpp" />
     <ClCompile Include="game\ability\abilities\focus.cpp" />
     <ClCompile Include="game\ability\abilities\ice_tile.cpp" />
@@ -256,6 +257,7 @@
     <ClInclude Include="direct3d\texture.h" />
     <ClInclude Include="game\ability\abilities\board_expand.h" />
     <ClInclude Include="game\ability\abilities\boss_ice_slide.h" />
+    <ClInclude Include="game\ability\abilities\boss_spiral_rotate.h" />
     <ClInclude Include="game\ability\abilities\contemplation.h" />
     <ClInclude Include="game\ability\abilities\focus.h" />
     <ClInclude Include="game\ability\abilities\ice_tile.h" />

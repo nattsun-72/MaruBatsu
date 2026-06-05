@@ -112,6 +112,9 @@
     <ClCompile Include="game\ability\abilities\boss_ice_slide.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
+    <ClCompile Include="game\ability\abilities\boss_spiral_rotate.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
     <ClCompile Include="game\ability\abilities\contemplation.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
@@ -274,6 +277,9 @@
       <Filter>game\ability</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\boss_ice_slide.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\boss_spiral_rotate.h">
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\contemplation.h">

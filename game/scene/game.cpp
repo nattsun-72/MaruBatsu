@@ -23,7 +23,7 @@
 #include "ability/ability_registry.h"
 #include "ability/abilities/boss_ice_slide.h"
 #include "boss/boss.h"
-#include "boss/ice_board_boss.h"
+#include "boss/boss_roster.h"
 
 #include "run_state.h"
 
@@ -423,9 +423,9 @@ namespace
      */
     void LoadBoss()
     {
-        // プロト版: 固定でボス1を起動。
-        // α版で RunManager が boss index に応じて切り替える。
-        g_Boss = std::make_unique<IceBoardBoss>();
+        // 現在のボス番号に応じてロスターからボスを生成する(データ駆動)。
+        g_Boss = BossRoster::Create(RunState::CurrentBossIndex());
+        if (!g_Boss) return;   // 念のためのガード(通常は到達しない)
         g_BossAbilities = g_Boss->GetBossAbilities();
         g_IceSlideRef.reset();
 
@@ -1523,10 +1523,22 @@ void Game_Update(double elapsed_time)
         switch (go.action)
         {
         case GameOverAction::Reward:
-            // 勝利: ボス番号を進めて報酬画面へ
+            // 勝利: ボス番号を進める
             RunState::IncrementBoss();
-            RunState::GenerateRewardChoices();
-            Scene_Change(Scene::REWARD);
+            if (RunState::IsRunComplete())
+            {
+                // 全ボス撃破=ランクリア。報酬を挟まず制覇表示→タイトルへ。
+                // (ここで GenerateRewardChoices を呼ばないことで、範囲外ボスへの
+                //  アクセスと空報酬の再生成を構造的に回避する)
+                RunState::MarkRunCleared();
+                Scene_Change(Scene::TITLE);
+            }
+            else
+            {
+                // 次のボスへ向けて報酬画面へ
+                RunState::GenerateRewardChoices();
+                Scene_Change(Scene::REWARD);
+            }
             break;
         case GameOverAction::Restart:
             // ランを最初からやり直す (取得アビリティ・ボス進行をリセット)

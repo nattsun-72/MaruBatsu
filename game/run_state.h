@@ -34,6 +34,19 @@ namespace RunState
     /** @brief ボスindexを1つ進める (ボス撃破時に呼ぶ) */
     void IncrementBoss();
 
+    /** @brief 1ランのボス総数 (ロスター定義に追従) を取得 */
+    int  BossCount();
+    /**
+     * @brief  ランを完走したか (全ボスを撃破したか) を判定
+     * @return CurrentBossIndex が BossCount 以上なら true
+     */
+    bool IsRunComplete();
+
+    /** @brief 直近のランをクリアした表示状態か (タイトルの制覇表示用) */
+    bool IsRunCleared();
+    /** @brief ランクリアを記録する (ラスボス撃破時に呼ぶ) */
+    void MarkRunCleared();
+
     /** @brief ラン状態を完全リセット (タイトルから新ラン開始時に呼ぶ) */
     void ResetRun();
 

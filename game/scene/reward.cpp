@@ -156,12 +156,23 @@ void Reward_Update(double /*elapsed_time*/)
         }
     }
 
-    /*--- 左クリックで選択を確定 → プレイヤー所持に追加して GAME へ ---*/
+    /*--- 左クリックで選択を確定 → プレイヤー所持に追加 ---*/
     if (InputManager_IsMouseLeftTrigger() && g_HoverIndex >= 0)
     {
         RunState::PlayerAbilities().push_back(choices[g_HoverIndex]);
         RunState::RewardChoices().clear();
-        Scene_Change(Scene::GAME);
+
+        // 二重防御: 万一ここで完走状態なら、次戦へは進めずタイトルへ。
+        // (通常はゲームシーン側で完走を先に検出するため到達しない)
+        if (RunState::IsRunComplete())
+        {
+            RunState::MarkRunCleared();
+            Scene_Change(Scene::TITLE);
+        }
+        else
+        {
+            Scene_Change(Scene::GAME);
+        }
         return;
     }
 

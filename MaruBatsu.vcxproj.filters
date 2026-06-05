@@ -130,7 +130,22 @@
     <ClCompile Include="game\ability\abilities\two_hands.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
+    <ClCompile Include="game\boss\boss_roster.cpp">
+      <Filter>game\boss</Filter>
+    </ClCompile>
     <ClCompile Include="game\boss\ice_board_boss.cpp">
+      <Filter>game\boss</Filter>
+    </ClCompile>
+    <ClCompile Include="game\boss\spiral_queen_boss.cpp">
+      <Filter>game\boss</Filter>
+    </ClCompile>
+    <ClCompile Include="game\boss\chain_pulse_boss.cpp">
+      <Filter>game\boss</Filter>
+    </ClCompile>
+    <ClCompile Include="game\boss\gravity_tyrant_boss.cpp">
+      <Filter>game\boss</Filter>
+    </ClCompile>
+    <ClCompile Include="game\boss\engraved_one_boss.cpp">
       <Filter>game\boss</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\game.cpp">
@@ -282,7 +297,22 @@
     <ClInclude Include="game\boss\boss.h">
       <Filter>game\boss</Filter>
     </ClInclude>
+    <ClInclude Include="game\boss\boss_roster.h">
+      <Filter>game\boss</Filter>
+    </ClInclude>
     <ClInclude Include="game\boss\ice_board_boss.h">
+      <Filter>game\boss</Filter>
+    </ClInclude>
+    <ClInclude Include="game\boss\spiral_queen_boss.h">
+      <Filter>game\boss</Filter>
+    </ClInclude>
+    <ClInclude Include="game\boss\chain_pulse_boss.h">
+      <Filter>game\boss</Filter>
+    </ClInclude>
+    <ClInclude Include="game\boss\gravity_tyrant_boss.h">
+      <Filter>game\boss</Filter>
+    </ClInclude>
+    <ClInclude Include="game\boss\engraved_one_boss.h">
       <Filter>game\boss</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\game.h">

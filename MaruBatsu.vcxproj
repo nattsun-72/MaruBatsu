@@ -216,7 +216,12 @@
     <ClCompile Include="game\ai.cpp" />
     <ClCompile Include="game\board.cpp" />
     <ClCompile Include="game\board_ops.cpp" />
+    <ClCompile Include="game\boss\boss_roster.cpp" />
     <ClCompile Include="game\boss\ice_board_boss.cpp" />
+    <ClCompile Include="game\boss\spiral_queen_boss.cpp" />
+    <ClCompile Include="game\boss\chain_pulse_boss.cpp" />
+    <ClCompile Include="game\boss\gravity_tyrant_boss.cpp" />
+    <ClCompile Include="game\boss\engraved_one_boss.cpp" />
     <ClCompile Include="game\collision.cpp" />
     <ClCompile Include="game\fade.cpp" />
     <ClCompile Include="game\font_atlas.cpp" />
@@ -265,7 +270,12 @@
     <ClInclude Include="game\board.h" />
     <ClInclude Include="game\board_ops.h" />
     <ClInclude Include="game\boss\boss.h" />
+    <ClInclude Include="game\boss\boss_roster.h" />
     <ClInclude Include="game\boss\ice_board_boss.h" />
+    <ClInclude Include="game\boss\spiral_queen_boss.h" />
+    <ClInclude Include="game\boss\chain_pulse_boss.h" />
+    <ClInclude Include="game\boss\gravity_tyrant_boss.h" />
+    <ClInclude Include="game\boss\engraved_one_boss.h" />
     <ClInclude Include="game\collision.h" />
     <ClInclude Include="game\direction.h" />
     <ClInclude Include="game\fade.h" />

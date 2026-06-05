@@ -6,6 +6,7 @@
  ****************************************/
 #include "run_state.h"
 #include "ability/ability_pool.h"
+#include "boss/boss_roster.h"
 
 #include <string>
 #include <vector>
@@ -17,7 +18,8 @@ namespace
 {
     std::vector<std::shared_ptr<Ability>> g_PlayerAbilities;  // 所持アビリティ(累積)
     std::vector<std::shared_ptr<Ability>> g_RewardChoices;    // 報酬画面の3択
-    int g_BossIndex = 0;                                      // 現在挑戦中のボスindex
+    int  g_BossIndex   = 0;                                   // 現在挑戦中のボスindex
+    bool g_RunCleared  = false;                               // 直近ランをクリアしたか(制覇表示用)
 }
 
 namespace RunState
@@ -31,15 +33,22 @@ namespace RunState
     int  CurrentBossIndex() { return g_BossIndex; }
     void IncrementBoss()    { ++g_BossIndex; }
 
+    int  BossCount()        { return BossRoster::Count(); }
+    bool IsRunComplete()    { return g_BossIndex >= BossCount(); }
+
+    bool IsRunCleared()     { return g_RunCleared; }
+    void MarkRunCleared()   { g_RunCleared = true; }
+
     //======================================
     // ラン制御
     //======================================
     void ResetRun()
     {
-        // 所持アビリティ・報酬候補・ボス進行をすべて初期化
+        // 所持アビリティ・報酬候補・ボス進行・クリア表示をすべて初期化
         g_PlayerAbilities.clear();
         g_RewardChoices.clear();
-        g_BossIndex = 0;
+        g_BossIndex   = 0;
+        g_RunCleared  = false;
     }
 
     void GenerateRewardChoices()

@@ -24,12 +24,14 @@ namespace
     constexpr float TEXT_TITLE_SIZE  = 72.0f;   // メインロゴ
     constexpr float TEXT_SUBTITLE    = 22.0f;   // サブタイトル
     constexpr float TEXT_HINT_SIZE   = 22.0f;   // 開始プロンプト
+    constexpr float TEXT_CLEAR_SIZE  = 30.0f;   // ランクリア(制覇)表示
 
     // 配色 (RGBA)
     const DirectX::XMFLOAT4 COLOR_BG       { 0.04f, 0.04f, 0.08f, 1.0f };  // 背景
     const DirectX::XMFLOAT4 COLOR_TITLE    { 0.90f, 0.95f, 1.00f, 1.0f };  // ロゴ文字
     const DirectX::XMFLOAT4 COLOR_SUB      { 0.55f, 0.85f, 1.00f, 1.0f };  // サブタイトル
     const DirectX::XMFLOAT4 COLOR_HINT     { 0.60f, 0.65f, 0.75f, 1.0f };  // プロンプト
+    const DirectX::XMFLOAT4 COLOR_CLEAR    { 0.60f, 1.00f, 0.60f, 1.0f };  // 制覇表示
 
     double g_BlinkTimer = 0.0;   // 開始プロンプト点滅用の経過時間
 }
@@ -88,6 +90,15 @@ void Title_Draw()
     Text::Draw((screenW - titleW) * 0.5f, titleY, title, TEXT_TITLE_SIZE, COLOR_TITLE);
     Text::Draw((screenW - subW)   * 0.5f, titleY + TEXT_TITLE_SIZE + 8.0f,
                subtitle, TEXT_SUBTITLE, COLOR_SUB);
+
+    /*--- ランクリア(制覇)表示 — 全ボス撃破後にタイトルへ戻った場合 ---*/
+    if (RunState::IsRunCleared())
+    {
+        const char* clearMsg = "全ボス撃破！ 制覇おめでとう";
+        const float clearW = Text::MeasureWidth(clearMsg, TEXT_CLEAR_SIZE);
+        Text::Draw((screenW - clearW) * 0.5f, screenH * 0.18f,
+                   clearMsg, TEXT_CLEAR_SIZE, COLOR_CLEAR);
+    }
 
     /*--- 開始プロンプト (一定周期で点滅) ---*/
     const bool show = (static_cast<int>(g_BlinkTimer * 1.5) % 2) == 0;

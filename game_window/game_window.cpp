@@ -13,8 +13,10 @@
 #include "system_timer.h"
 
 // ウィンドウ情報
-static constexpr char WINDOW_CLASS[] = "GameWindow"; // メインウインドウクラス名
-static constexpr char TITLE[] = "斬空"; // タイトルバーのテキスト
+// 日本語を正しく表示するため、クラス名・タイトルはワイド文字列で持ち、
+// ウィンドウAPIは明示的にW版(CreateWindowW等)を呼ぶ。
+static constexpr wchar_t WINDOW_CLASS[] = L"GameWindow";        // メインウインドウクラス名
+static constexpr wchar_t TITLE[]        = L"〇×ローグライト";  // タイトルバーのテキスト
 static constexpr int SCREEN_WIDTH = 1600;
 static constexpr int SCREEN_HEIGHT = 900;
 static constexpr DWORD WINDOWED_STYLE = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_THICKFRAME);
@@ -29,9 +31,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 HWND GameWindow_Create(_In_ HINSTANCE hInstance)
 {
     // ウインドウクラスの登録
-    WNDCLASSEX wcex{};
+    WNDCLASSEXW wcex{};
 
-    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.cbSize = sizeof(WNDCLASSEXW);
     wcex.lpfnWndProc = WndProc;
     wcex.hInstance = hInstance;
     wcex.hIcon = LoadIcon(hInstance, IDI_APPLICATION);
@@ -41,7 +43,7 @@ HWND GameWindow_Create(_In_ HINSTANCE hInstance)
     wcex.lpszClassName = WINDOW_CLASS;
     wcex.hIconSm = LoadIcon(wcex.hInstance, IDI_APPLICATION);
 
-    RegisterClassEx(&wcex);
+    RegisterClassExW(&wcex);
 
     // メインウィンドウの作成
 
@@ -66,7 +68,7 @@ HWND GameWindow_Create(_In_ HINSTANCE hInstance)
     const int WINDOW_X = std::max(0, (desktop_width - WINDOW_WIDTH) / 2);
     const int WINDOW_Y = std::max(0, (desktop_height - WINDOW_HEIGHT) / 2);
 
-    g_hWnd = CreateWindow(
+    g_hWnd = CreateWindowW(
         WINDOW_CLASS,
         TITLE,
         style, // Window Style Flag
@@ -125,7 +127,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         Mouse_ProcessMessage(message, wParam, lParam);
         break;
     case WM_CLOSE:
-        if (MessageBox(hWnd, "本当に終了してよろしいですか？", "確認", MB_YESNO | MB_DEFBUTTON2) == IDYES)
+        if (MessageBoxW(hWnd, L"本当に終了してよろしいですか？", L"確認", MB_YESNO | MB_DEFBUTTON2) == IDYES)
         {
             DestroyWindow(hWnd);
         }
@@ -134,7 +136,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
         break;
     default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return DefWindowProcW(hWnd, message, wParam, lParam);
     }
     return 0;
 }

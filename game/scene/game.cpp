@@ -1462,6 +1462,7 @@ void Game_Update(double elapsed_time)
     // ※ ESC はウィンドウ側で終了確認に割当て済みのため使用しない
     if (Keyboard_IsKeyDown(KK_R))
     {
+        RunState::ResetRun();   // 取得アビリティ・ボス進行を破棄しランを初期化
         ResetMatch();
         return;
     }
@@ -1528,7 +1529,8 @@ void Game_Update(double elapsed_time)
             Scene_Change(Scene::REWARD);
             break;
         case GameOverAction::Restart:
-            // 同じボスへ再挑戦
+            // ランを最初からやり直す (取得アビリティ・ボス進行をリセット)
+            RunState::ResetRun();
             ResetMatch();
             break;
         case GameOverAction::Title:

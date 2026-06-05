@@ -126,6 +126,7 @@ namespace
     const DirectX::XMFLOAT4 COLOR_TEXT_URGENT { 1.00f, 0.85f, 0.40f, 1.0f };  // 警告 (残時間少)
     const DirectX::XMFLOAT4 COLOR_SLIDE_ARROW { 0.55f, 0.85f, 1.00f, 1.0f };  // 滑り方向矢印
     const DirectX::XMFLOAT4 COLOR_ROTATE_ARROW{ 0.82f, 0.55f, 1.00f, 1.0f };  // 回転方向矢印(紫)
+    const DirectX::XMFLOAT4 COLOR_CHAIN_PULSE { 1.00f, 0.55f, 0.30f, 1.0f };  // 連鎖パルス線(橙赤)
     const DirectX::XMFLOAT4 COLOR_BTN_BG      { 0.12f, 0.13f, 0.20f, 0.96f };  // ボタン本体
     const DirectX::XMFLOAT4 COLOR_BTN_HOVER   { 0.24f, 0.28f, 0.40f, 0.98f };  // ボタン (ホバー)
 
@@ -549,8 +550,12 @@ namespace
      */
     void ApplyPhase(Board& board, const BoardOps::MoveList& phase)
     {
-        for (const auto& m : phase) board.Set(m.fromX, m.fromY, Piece::Empty);
-        for (const auto& m : phase) board.Set(m.toX,   m.toY,   m.piece);
+        // 移動は source を空にする。出現(isSpawn)は発生源を残す。
+        for (const auto& m : phase)
+        {
+            if (!m.isSpawn) board.Set(m.fromX, m.fromY, Piece::Empty);
+        }
+        for (const auto& m : phase) board.Set(m.toX, m.toY, m.piece);
     }
 
     /**
@@ -852,7 +857,8 @@ namespace
             raw = (raw < 0.0f) ? 0.0f : (raw > 1.0f ? 1.0f : raw);
             const float t = 1.0f - (1.0f - raw) * (1.0f - raw);
 
-            // このフェーズで動かない駒を静止描画 (出発マスの駒は補間描画に回す)
+            // このフェーズで動かない駒を静止描画。
+            // 出発マスの駒は補間描画に回す(出現効果の発生源は移動しないので除外しない)。
             for (int y = 0; y < disp.height; ++y)
             {
                 for (int x = 0; x < disp.width; ++x)
@@ -860,7 +866,11 @@ namespace
                     bool isMover = false;
                     for (const auto& m : phase)
                     {
-                        if (m.fromX == x && m.fromY == y) { isMover = true; break; }
+                        if (!m.isSpawn && m.fromX == x && m.fromY == y)
+                        {
+                            isMover = true;
+                            break;
+                        }
                     }
                     if (isMover) continue;
                     const float cx = ox + x * CELL_SIZE + halfCell;
@@ -868,14 +878,35 @@ namespace
                     DrawPiece(disp.Get(x, y), cx, cy, pieceRadius);
                 }
             }
-            // 移動駒を from→to で補間描画
+            // 移動駒は from→to で補間描画、出現駒は拡大しながら出現させる
             for (const auto& m : phase)
             {
-                const float fx = m.fromX + (m.toX - m.fromX) * t;
-                const float fy = m.fromY + (m.toY - m.fromY) * t;
-                const float cx = ox + fx * CELL_SIZE + halfCell;
-                const float cy = oy + fy * CELL_SIZE + halfCell;
-                DrawPiece(m.piece, cx, cy, pieceRadius);
+                if (m.isSpawn)
+                {
+                    // 出現: 発生源から出現先へ連鎖パルス線を引き、駒を拡大表示する
+                    const float scx = ox + m.fromX * CELL_SIZE + halfCell;
+                    const float scy = oy + m.fromY * CELL_SIZE + halfCell;
+                    const float dcx = ox + m.toX   * CELL_SIZE + halfCell;
+                    const float dcy = oy + m.toY   * CELL_SIZE + halfCell;
+
+                    // 連鎖パルス線 (発生源が盤内のときのみ。進行とともに減衰)
+                    if (m.fromX >= 0 && m.fromY >= 0)
+                    {
+                        DirectX::XMFLOAT4 pulse = COLOR_CHAIN_PULSE;
+                        pulse.w = (1.0f - t) * 0.7f;
+                        Prim::DrawLine(scx, scy, dcx, dcy, 4.0f, pulse);
+                    }
+                    // 出現する駒 (半径を 0→満 へ拡大)
+                    DrawPiece(m.piece, dcx, dcy, pieceRadius * t);
+                }
+                else
+                {
+                    const float fx = m.fromX + (m.toX - m.fromX) * t;
+                    const float fy = m.fromY + (m.toY - m.fromY) * t;
+                    const float cx = ox + fx * CELL_SIZE + halfCell;
+                    const float cy = oy + fy * CELL_SIZE + halfCell;
+                    DrawPiece(m.piece, cx, cy, pieceRadius);
+                }
             }
         }
         else

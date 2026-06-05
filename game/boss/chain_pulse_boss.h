@@ -4,9 +4,8 @@
  * @author Natsume Shidara
  * @date   2026/06/05
  *
- * 駒が自動拡張するギミックを持つ予定のボス。難易度★3。
- * W1第1増分ではギミック未実装のスタブ(通常〇×として成立)。
- * 自動拡張ギミックは IPlacementHandler 系として後続増分で本実装する。
+ * ボスが駒を置くたび隣接マスへ拡張するギミックを持つボス。難易度★3。
+ * ギミックは BossChainPulseAbility (IPlacementHandler) で実現する。
  ****************************************/
 #ifndef CHAIN_PULSE_BOSS_H
 #define CHAIN_PULSE_BOSS_H

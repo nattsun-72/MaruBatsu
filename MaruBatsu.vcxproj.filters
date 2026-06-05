@@ -109,6 +109,9 @@
     <ClCompile Include="game\ability\default_hooks.cpp">
       <Filter>game\ability</Filter>
     </ClCompile>
+    <ClCompile Include="game\ability\abilities\boss_chain_pulse.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
     <ClCompile Include="game\ability\abilities\boss_ice_slide.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
@@ -275,6 +278,9 @@
     </ClInclude>
     <ClInclude Include="game\ability\hooks.h">
       <Filter>game\ability</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\boss_chain_pulse.h">
+      <Filter>game\ability\abilities</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\boss_ice_slide.h">
       <Filter>game\ability\abilities</Filter>

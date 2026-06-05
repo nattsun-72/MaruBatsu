@@ -31,15 +31,19 @@ namespace BoardOps
     //--------------------------------------
     /**
      * @struct Move
-     * @brief  1駒の移動記録 (from → to)
+     * @brief  1駒の移動/出現の記録
      * @detail アニメーション再生で「どの駒がどこからどこへ動いたか」を
      *         再現するために使う。
+     *         isSpawn=true の場合は「移動」ではなく「出現(新規生成)」を表し、
+     *         from は出現元(連鎖の発生源。盤上に残る)、to が出現先となる。
+     *         連鎖拡張・爆弾・召喚など、新たに駒が現れる効果で使う。
      */
     struct Move
     {
-        int   fromX, fromY;  // 移動元のマス座標
-        int   toX,   toY;    // 移動先のマス座標
-        Piece piece;         // 移動した駒の種別
+        int   fromX, fromY;       // 移動元 / (出現時)発生源のマス座標
+        int   toX,   toY;         // 移動先 / 出現先のマス座標
+        Piece piece;              // 移動/出現した駒の種別
+        bool  isSpawn = false;    // true=出現(fromは消さず残す), false=移動
     };
 
     /** @brief 同時に起こる移動の集まり (1効果 = 1フェーズ) */

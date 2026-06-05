@@ -5,6 +5,7 @@
  * @date   2026/06/05
  ****************************************/
 #include "chain_pulse_boss.h"
+#include "ability/abilities/boss_chain_pulse.h"
 #include "ability/abilities/contemplation.h"
 
 //======================================
@@ -13,7 +14,7 @@
 ChainPulseBoss::ChainPulseBoss()
 {
     name        = "連鎖の鼓動";
-    description = "やがて駒が自動で連鎖拡張する（実装予定）";
+    description = "ボスが駒を置くたび、隣接マスへ拡張する";
     difficulty  = 3;
     // テーマ色: 深い赤 (鼓動)
     bgR = 0.14f; bgG = 0.04f; bgB = 0.05f;
@@ -24,9 +25,8 @@ ChainPulseBoss::ChainPulseBoss()
 //======================================
 std::vector<std::shared_ptr<Ability>> ChainPulseBoss::GetBossAbilities()
 {
-    // W1第1増分: ギミック未実装。空を返すと通常の〇×として成立する。
-    // 自動拡張ギミック(IPlacementHandler系)は後続増分でここに追加する。
-    return {};
+    // ボス側ギミック: ボスの設置のたび隣接マスへ同色駒を自動拡張させる
+    return { std::make_shared<BossChainPulseAbility>() };
 }
 
 std::shared_ptr<Ability> ChainPulseBoss::GetRewardAbility()

@@ -14,8 +14,10 @@
 SpiralQueenBoss::SpiralQueenBoss()
 {
     name        = "螺旋の女王";
-    description = "駒を置くたび盤面が回転する";
+    description = "駒を置くたび、盤面が90度回転する";
     difficulty  = 2;
+    // テーマ色: 深い紫 (螺旋)
+    bgR = 0.10f; bgG = 0.04f; bgB = 0.14f;
 }
 
 //======================================

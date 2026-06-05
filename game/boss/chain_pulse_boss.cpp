@@ -13,8 +13,10 @@
 ChainPulseBoss::ChainPulseBoss()
 {
     name        = "連鎖の鼓動";
-    description = "駒が自動で連鎖拡張する（実装予定）";
+    description = "やがて駒が自動で連鎖拡張する（実装予定）";
     difficulty  = 3;
+    // テーマ色: 深い赤 (鼓動)
+    bgR = 0.14f; bgG = 0.04f; bgB = 0.05f;
 }
 
 //======================================

@@ -22,6 +22,7 @@
 
 #include "ability/ability_registry.h"
 #include "ability/abilities/boss_ice_slide.h"
+#include "ability/abilities/boss_spiral_rotate.h"
 #include "boss/boss.h"
 #include "boss/boss_roster.h"
 
@@ -124,6 +125,7 @@ namespace
     const DirectX::XMFLOAT4 COLOR_TEXT_DRAW   { 0.80f, 0.80f, 0.90f, 1.0f };  // 引き分け
     const DirectX::XMFLOAT4 COLOR_TEXT_URGENT { 1.00f, 0.85f, 0.40f, 1.0f };  // 警告 (残時間少)
     const DirectX::XMFLOAT4 COLOR_SLIDE_ARROW { 0.55f, 0.85f, 1.00f, 1.0f };  // 滑り方向矢印
+    const DirectX::XMFLOAT4 COLOR_ROTATE_ARROW{ 0.82f, 0.55f, 1.00f, 1.0f };  // 回転方向矢印(紫)
     const DirectX::XMFLOAT4 COLOR_BTN_BG      { 0.12f, 0.13f, 0.20f, 0.96f };  // ボタン本体
     const DirectX::XMFLOAT4 COLOR_BTN_HOVER   { 0.24f, 0.28f, 0.40f, 0.98f };  // ボタン (ホバー)
 
@@ -137,7 +139,8 @@ namespace
 
     std::unique_ptr<Boss>                       g_Boss;          // 現在のボス
     std::vector<std::shared_ptr<Ability>>       g_BossAbilities; // ボス側アビリティ
-    std::shared_ptr<BossIceSlideAbility>        g_IceSlideRef;   // HUD表示用 (氷盤参照)
+    std::shared_ptr<BossIceSlideAbility>        g_IceSlideRef;   // 方向インジケータ用 (氷盤参照)
+    std::shared_ptr<BossSpiralRotateAbility>    g_SpiralRef;     // 回転インジケータ用 (螺旋盤参照)
 
     //--------------------------------------
     // 直近着手の演出
@@ -428,6 +431,7 @@ namespace
         if (!g_Boss) return;   // 念のためのガード(通常は到達しない)
         g_BossAbilities = g_Boss->GetBossAbilities();
         g_IceSlideRef.reset();
+        g_SpiralRef.reset();
 
         // プレイヤー側を先に登録 → OnPlace はプレイヤー効果が先に発火する。
         // (氷駒が「置いた直後の駒」を滑らせてから、氷盤が全体を滑らせる)
@@ -439,9 +443,14 @@ namespace
         for (auto& a : g_BossAbilities)
         {
             a->RegisterTo(g_Registry);
+            // 方向/回転インジケータ描画用に、該当ギミックの参照を控える
             if (auto ice = std::dynamic_pointer_cast<BossIceSlideAbility>(a))
             {
                 g_IceSlideRef = ice;
+            }
+            if (auto spiral = std::dynamic_pointer_cast<BossSpiralRotateAbility>(a))
+            {
+                g_SpiralRef = spiral;
             }
         }
     }
@@ -932,6 +941,54 @@ namespace
     }
 
     /**
+     * @brief  螺旋盤が回転する向きを、盤の四辺を巡る循環シェブロンで可視化する
+     * @detail 螺旋盤ボスが存在しプレイ中のときのみ描画。各辺のシェブロンを
+     *         循環方向に向け、脈動を循環順に走らせて回転方向を提示する。
+     */
+    void DrawRotationIndicator()
+    {
+        if (!g_SpiralRef) return;
+        if (g_State.result != MatchResult::Playing) return;
+
+        const float ox   = BoardOriginX();
+        const float oy   = BoardOriginY();
+        const float half = BOARD_SIZE * 0.5f;
+        const bool  cw   = g_SpiralRef->clockwise;
+
+        // 四辺のシェブロンを「循環順」に並べる。各辺は循環方向を指す。
+        struct Spot { float cx, cy; Direction dir; };
+        Spot spots[4];
+        if (cw)
+        {
+            // 時計回り: 上(右向き)→右(下向き)→下(左向き)→左(上向き)
+            spots[0] = { ox + half,                        oy - CHEVRON_MARGIN,            Direction::Right };
+            spots[1] = { ox + BOARD_SIZE + CHEVRON_MARGIN, oy + half,                      Direction::Down  };
+            spots[2] = { ox + half,                        oy + BOARD_SIZE + CHEVRON_MARGIN, Direction::Left };
+            spots[3] = { ox - CHEVRON_MARGIN,              oy + half,                      Direction::Up    };
+        }
+        else
+        {
+            // 反時計回り: 上(左向き)→左(下向き)→下(右向き)→右(上向き)
+            spots[0] = { ox + half,                        oy - CHEVRON_MARGIN,            Direction::Left  };
+            spots[1] = { ox - CHEVRON_MARGIN,              oy + half,                      Direction::Down  };
+            spots[2] = { ox + half,                        oy + BOARD_SIZE + CHEVRON_MARGIN, Direction::Right };
+            spots[3] = { ox + BOARD_SIZE + CHEVRON_MARGIN, oy + half,                      Direction::Up    };
+        }
+
+        for (int i = 0; i < 4; ++i)
+        {
+            // 循環順(spots順)に脈動を走らせて回転の流れを表現する
+            const float wave = 0.5f + 0.5f * std::sin(
+                static_cast<float>(g_AnimClock) * 5.0f - i * 0.9f);
+            DirectX::XMFLOAT4 col = COLOR_ROTATE_ARROW;
+            col.w = 0.30f + 0.60f * wave;
+
+            DrawChevron(spots[i].cx, spots[i].cy, spots[i].dir,
+                        CHEVRON_SIZE, CHEVRON_THICKNESS, col);
+        }
+    }
+
+    /**
      * @brief  HUD (残時間・手番・ボス名・所持アビリティ) を描画する
      */
     void DrawHud()
@@ -972,7 +1029,7 @@ namespace
             Text::Draw(screenW - w - 24.0f, 24.0f, turn, TEXT_SIZE_HUD, COLOR_TEXT);
         }
 
-        /*--- ボス情報 (画面中央上) ---*/
+        /*--- ボス情報 (画面中央上)。名前の下に能力フレーバーを表示 ---*/
         if (g_Boss)
         {
             char nameBuf[64];
@@ -980,8 +1037,17 @@ namespace
             const float nameW = Text::MeasureWidth(nameBuf, TEXT_SIZE_HUD);
             Text::Draw((screenW - nameW) * 0.5f, 24.0f, nameBuf,
                        TEXT_SIZE_HUD, COLOR_TEXT_URGENT);
+
+            // フレーバーテキスト (ボス能力の簡単な説明)
+            if (!g_Boss->description.empty())
+            {
+                const float flavorW =
+                    Text::MeasureWidth(g_Boss->description.c_str(), TEXT_SIZE_HINT);
+                Text::Draw((screenW - flavorW) * 0.5f, 24.0f + TEXT_SIZE_HUD + 4.0f,
+                           g_Boss->description.c_str(), TEXT_SIZE_HINT, COLOR_TEXT_HINT);
+            }
         }
-        // 氷盤の滑り方向は DrawDirectionIndicator のシェブロン矢印で可視化
+        // 盤面ギミックの方向は Draw(Direction/Rotation)Indicator のシェブロンで可視化
 
         /*--- 所持アビリティ (画面左下) ---*/
         // 5グループまで表示し、超過分は「……」行から履歴ポップアップへ。
@@ -1559,8 +1625,18 @@ void Game_Update(double elapsed_time)
 //======================================
 void Game_Draw()
 {
+    // ボスごとのテーマ色で全画面背景を塗る (盤面の周囲に雰囲気を出す)
+    if (g_Boss)
+    {
+        const float screenW = static_cast<float>(Direct3D_GetBackBufferWidth());
+        const float screenH = static_cast<float>(Direct3D_GetBackBufferHeight());
+        Prim::DrawRect(0, 0, screenW, screenH,
+                       { g_Boss->bgR, g_Boss->bgG, g_Boss->bgB, 1.0f });
+    }
+
     DrawBoardAndPieces();     // 盤面と駒
     DrawDirectionIndicator(); // 氷盤の滑り方向矢印
+    DrawRotationIndicator();  // 螺旋盤の回転方向シェブロン
     DrawHud();                // HUD (残時間/手番/アビリティ)
     DrawAbilityPopup();       // アビリティ履歴ポップアップ
     DrawGameOverOverlay();    // ゲームオーバー時のオーバーレイ

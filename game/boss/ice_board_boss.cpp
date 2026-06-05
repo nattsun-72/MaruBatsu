@@ -14,8 +14,10 @@
 IceBoardBoss::IceBoardBoss()
 {
     name        = "氷盤の支配者";
-    description = "駒を置くたび全ての駒が滑る";
+    description = "駒を置くたび、全ての駒が氷上を滑る";
     difficulty  = 1;
+    // テーマ色: 深い青 (氷)
+    bgR = 0.03f; bgG = 0.05f; bgB = 0.13f;
 }
 
 //======================================

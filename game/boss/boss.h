@@ -41,8 +41,14 @@ public:
     // メンバ変数 (ボス情報)
     //--------------------------------------
     std::string name;              // ボス名
-    std::string description;       // ギミックの説明文
+    std::string description;       // ギミック説明 (ボス名下のフレーバーテキスト)
     int         difficulty = 1;    // 難易度 (★の数)
+
+    // 背景テーマ色 (ボスごとの雰囲気を出す全画面背景。RGB、既定は暗い青)
+    // DirectXMath依存を避けるため float 3成分で持つ。
+    float       bgR = 0.04f;
+    float       bgG = 0.04f;
+    float       bgB = 0.08f;
 
     //======================================
     // 派生クラスが実装するインターフェース

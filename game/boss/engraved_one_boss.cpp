@@ -13,8 +13,10 @@
 EngravedOneBoss::EngravedOneBoss()
 {
     name        = "刻まれし者";
-    description = "過去のボスたちの力が宿る（実装予定）";
+    description = "過去の支配者たちの力が宿る（実装予定）";
     difficulty  = 5;
+    // テーマ色: 複合の深い紫紺
+    bgR = 0.10f; bgG = 0.05f; bgB = 0.12f;
 }
 
 //======================================

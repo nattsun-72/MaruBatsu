@@ -13,8 +13,10 @@
 GravityTyrantBoss::GravityTyrantBoss()
 {
     name        = "重力の専制者";
-    description = "重い駒で盤面を支配する（実装予定）";
+    description = "やがて重い駒が盤面を支配する（実装予定）";
     difficulty  = 4;
+    // テーマ色: 鋼鉄の灰青 (金属)
+    bgR = 0.09f; bgG = 0.10f; bgB = 0.12f;
 }
 
 //======================================

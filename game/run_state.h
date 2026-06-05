@@ -16,7 +16,28 @@
 #include "ability/ability.h"
 
 #include <memory>
+#include <string>
 #include <vector>
+
+//======================================
+// ラン結果 (リザルト画面・履歴用の戦績スナップショット)
+//======================================
+/**
+ * @struct RunResult
+ * @brief  1ラン終了時の戦績
+ * @detail リザルト画面の表示と、履歴ログへの記録に使う。
+ */
+struct RunResult
+{
+    bool        cleared        = false;  // クリア(全撃破)なら true、敗北なら false
+    int         bossesDefeated = 0;      // 撃破したボス数
+    int         bossTotal      = 0;      // ボス総数 (例 5)
+    double      timeSeconds    = 0.0;    // ランの総プレイ時間(秒)
+    int         turns          = 0;      // ランの総ターン数
+    std::string defeatedByBoss;          // 敗北時に倒されたボス名 (クリア時は空)
+    std::string dateTime;                // 終了日時 "YYYY/MM/DD HH:MM"
+    std::vector<std::string> abilityNames; // 取得アビリティ名(取得順)
+};
 
 //======================================
 // ラン進行状態 名前空間
@@ -52,6 +73,27 @@ namespace RunState
 
     /** @brief 報酬の3択をプールからランダム抽選して生成する */
     void GenerateRewardChoices();
+
+    //======================================
+    // ラン統計 (リザルト用)
+    //======================================
+    /** @brief ランの累積プレイ時間に dt(秒) を加算する (ゲーム進行中に呼ぶ) */
+    void   AddRunTime(double dt);
+    /** @brief ランの累積ターン数を1増やす (ターン開始時に呼ぶ) */
+    void   AddRunTurn();
+    /** @brief ランの累積プレイ時間(秒)を取得 */
+    double RunTime();
+    /** @brief ランの累積ターン数を取得 */
+    int    RunTurns();
+
+    /**
+     * @brief  ラン終了時の戦績を確定して保持する
+     * @param  cleared        クリア(全撃破)なら true
+     * @param  defeatedByBoss 敗北時に倒されたボス名 (クリア時は空文字)
+     */
+    void             CaptureResult(bool cleared, const std::string& defeatedByBoss);
+    /** @brief 直近に確定した戦績を取得 (リザルト画面が参照) */
+    const RunResult& LastResult();
 
     //======================================
     // セーブ／ロード (中断再開用の最小実装)

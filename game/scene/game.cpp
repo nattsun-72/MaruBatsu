@@ -404,6 +404,7 @@ namespace
      */
     void BeginTurn(Piece p)
     {
+        RunState::AddRunTurn();   // ラン統計: 総ターン数を加算
         g_State.currentPlayer       = p;
         g_State.placementsRemaining = g_Registry.GetPlacementCount(p);
         g_State.remainingTime       = g_Registry.GetTurnTime(p);
@@ -491,10 +492,12 @@ namespace
         g_Registry.GetBoardSize(boardW, boardH);
         g_State.board.Resize(boardW, boardH);
 
-        BeginTurn(Piece::Player);
-
-        // この戦況(ボス番号+所持アビリティ)をセーブ。アプリ終了後も再開できる。
+        // この戦況(ボス番号+所持アビリティ+統計)を BeginTurn の前にセーブする。
+        // BeginTurn 後に保存すると、その戦の初手ターン加算がセーブ値に含まれ、
+        // 「つづきから」再開時に ResetMatch→BeginTurn で初手が二重計上されるため。
         RunState::SaveRun();
+
+        BeginTurn(Piece::Player);
     }
 
     //======================================
@@ -1236,7 +1239,7 @@ namespace
      * @enum  GameOverAction
      * @brief ゲームオーバー画面のボタンが実行する操作
      */
-    enum class GameOverAction { Reward, Restart, Title };
+    enum class GameOverAction { Reward, Result };
 
     /**
      * @struct GameOverButton
@@ -1252,8 +1255,9 @@ namespace
     /**
      * @brief  現在の結果に応じたボタン一覧を生成する
      * @return ゲームオーバー画面に表示するボタン群
-     * @detail 勝利時は「報酬を受け取る」1個、それ以外は
-     *         「リスタート」「タイトルへ」の2個。Update/Draw で共有する。
+     * @detail 通常ボス撃破は「報酬を受け取る」(報酬画面へ)。
+     *         最終ボス撃破(クリア)・敗北はラン終了なので「結果を見る」
+     *         (リザルト画面へ)。Update/Draw で共有する。
      */
     std::vector<GameOverButton> BuildGameOverButtons()
     {
@@ -1261,24 +1265,24 @@ namespace
         const float screenW = static_cast<float>(Direct3D_GetBackBufferWidth());
         const float screenH = static_cast<float>(Direct3D_GetBackBufferHeight());
         const float by = screenH * 0.5f + 30.0f;
+        const float x  = (screenW - BUTTON_W) * 0.5f;
 
-        if (g_State.result == MatchResult::Win)
+        const bool isFinalBoss =
+            (RunState::CurrentBossIndex() >= RunState::BossCount() - 1);
+
+        if (g_State.result == MatchResult::Win && !isFinalBoss)
         {
-            // 勝利: 報酬画面へ進むボタン1個
-            const float x = (screenW - BUTTON_W) * 0.5f;
+            // 通常ボス撃破: 報酬画面へ進む
             list.push_back({ { x, by, BUTTON_W, BUTTON_H, "報酬を受け取る" },
                              GameOverAction::Reward, COLOR_TEXT_WIN });
         }
         else
         {
-            // 敗北/引分/時間切れ: リスタート と タイトルへ の2個
-            const float totalW = BUTTON_W * 2.0f + BUTTON_GAP;
-            const float x0 = (screenW - totalW) * 0.5f;
-            list.push_back({ { x0, by, BUTTON_W, BUTTON_H, "リスタート" },
-                             GameOverAction::Restart, COLOR_PIECE_O });
-            list.push_back({ { x0 + BUTTON_W + BUTTON_GAP, by,
-                               BUTTON_W, BUTTON_H, "タイトルへ" },
-                             GameOverAction::Title, COLOR_TEXT_HINT });
+            // 最終ボス撃破(クリア) または 敗北/引分/時間切れ → リザルトへ
+            const DirectX::XMFLOAT4 accent = (g_State.result == MatchResult::Win)
+                ? COLOR_TEXT_WIN : COLOR_PIECE_O;
+            list.push_back({ { x, by, BUTTON_W, BUTTON_H, "結果を見る" },
+                             GameOverAction::Result, accent });
         }
         return list;
     }
@@ -1558,6 +1562,12 @@ void Game_Update(double elapsed_time)
         g_WheelPrev  = wheel;
     }
 
+    // ラン統計: 対戦中の経過時間を累積する
+    if (g_State.result == MatchResult::Playing)
+    {
+        RunState::AddRunTime(elapsed_time);
+    }
+
     // R はリスタートのショートカット (ゲームオーバー画面のボタンでも可)
     // ※ ESC はウィンドウ側で終了確認に割当て済みのため使用しない
     if (Keyboard_IsKeyDown(KK_R))
@@ -1623,32 +1633,26 @@ void Game_Update(double elapsed_time)
         switch (go.action)
         {
         case GameOverAction::Reward:
-            // 勝利: ボス番号を進める
+            // 通常ボス撃破: ボス番号を進めて報酬画面へ
             RunState::IncrementBoss();
-            if (RunState::IsRunComplete())
+            RunState::GenerateRewardChoices();
+            Scene_Change(Scene::REWARD);
+            break;
+        case GameOverAction::Result:
+            // ラン終了(最終ボス撃破=クリア / 敗北) → 戦績を確定しリザルトへ
+            if (g_State.result == MatchResult::Win)
             {
-                // 全ボス撃破=ランクリア。報酬を挟まず制覇表示→タイトルへ。
-                // (ここで GenerateRewardChoices を呼ばないことで、範囲外ボスへの
-                //  アクセスと空報酬の再生成を構造的に回避する)
+                RunState::IncrementBoss();    // 最終撃破を反映(撃破数=総数)
                 RunState::MarkRunCleared();
-                RunState::ClearSave();   // ラン完走 → セーブ削除
-                Scene_Change(Scene::TITLE);
+                RunState::ClearSave();        // ラン完走 → セーブ削除
+                RunState::CaptureResult(true, "");
             }
             else
             {
-                // 次のボスへ向けて報酬画面へ
-                RunState::GenerateRewardChoices();
-                Scene_Change(Scene::REWARD);
+                // 敗北: 倒されたボス名を記録(セーブは寛容仕様で残す)
+                RunState::CaptureResult(false, g_Boss ? g_Boss->name : std::string());
             }
-            break;
-        case GameOverAction::Restart:
-            // ランを最初からやり直す (取得アビリティ・ボス進行をリセット)
-            RunState::ResetRun();
-            ResetMatch();
-            break;
-        case GameOverAction::Title:
-            // タイトルへ戻る
-            Scene_Change(Scene::TITLE);
+            Scene_Change(Scene::RESULT);
             break;
         }
         return;

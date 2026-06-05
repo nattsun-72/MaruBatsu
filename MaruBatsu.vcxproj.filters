@@ -157,6 +157,9 @@
     <ClCompile Include="game\scene\game.cpp">
       <Filter>game\scene</Filter>
     </ClCompile>
+    <ClCompile Include="game\scene\result.cpp">
+      <Filter>game\scene</Filter>
+    </ClCompile>
     <ClCompile Include="game\scene\reward.cpp">
       <Filter>game\scene</Filter>
     </ClCompile>
@@ -328,6 +331,9 @@
       <Filter>game\boss</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\game.h">
+      <Filter>game\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\result.h">
       <Filter>game\scene</Filter>
     </ClInclude>
     <ClInclude Include="game\scene\reward.h">

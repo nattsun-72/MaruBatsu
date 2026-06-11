@@ -221,6 +221,7 @@
     <ClCompile Include="game\ability\abilities\spiral_shard.cpp" />
     <ClCompile Include="game\ability\abilities\two_hands.cpp" />
     <ClCompile Include="game\config.cpp" />
+    <ClCompile Include="game\view3d.cpp" />
     <ClCompile Include="game\ability\ability_pool.cpp" />
     <ClCompile Include="game\ability\ability_registry.cpp" />
     <ClCompile Include="game\ability\default_hooks.cpp" />
@@ -285,6 +286,7 @@
     <ClInclude Include="game\ability\abilities\spiral_shard.h" />
     <ClInclude Include="game\ability\abilities\two_hands.h" />
     <ClInclude Include="game\config.h" />
+    <ClInclude Include="game\view3d.h" />
     <ClInclude Include="game\ability\ability.h" />
     <ClInclude Include="game\ability\ability_pool.h" />
     <ClInclude Include="game\ability\ability_registry.h" />

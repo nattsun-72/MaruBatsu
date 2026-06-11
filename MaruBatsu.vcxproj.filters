@@ -160,6 +160,9 @@
     <ClCompile Include="game\config.cpp">
       <Filter>game</Filter>
     </ClCompile>
+    <ClCompile Include="game\view3d.cpp">
+      <Filter>game</Filter>
+    </ClCompile>
     <ClCompile Include="game\ability\abilities\two_hands.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
@@ -361,6 +364,9 @@
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
     <ClInclude Include="game\config.h">
+      <Filter>game</Filter>
+    </ClInclude>
+    <ClInclude Include="game\view3d.h">
       <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\two_hands.h">

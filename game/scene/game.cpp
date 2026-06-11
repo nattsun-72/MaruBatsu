@@ -30,6 +30,7 @@
 
 #include "run_state.h"
 #include "config.h"
+#include "view3d.h"
 
 #include "scene.h"
 #include "direct3d.h"
@@ -73,11 +74,10 @@ namespace
 
     //--------------------------------------
     // 方向インジケータ (シェブロン矢印)
+    //   ※ 大きさ・太さ・マージンは「マス単位」で各描画関数が持ち、
+    //     2D/3Dの遠近スケール (PxPerCell) を掛けて画面サイズへ変換する
     //--------------------------------------
     constexpr int   CHEVRON_COUNT     = 3;       // 滑る先の辺に沿って並べる数
-    constexpr float CHEVRON_SIZE      = 18.0f;   // シェブロンの大きさ
-    constexpr float CHEVRON_THICKNESS = 6.0f;    // シェブロンの線の太さ
-    constexpr float CHEVRON_MARGIN    = 24.0f;   // 盤面端からの距離
 
     //--------------------------------------
     // ボタンUI
@@ -222,8 +222,83 @@ namespace
      * @param  sy スクリーンY座標
      * @return 命中したセル座標。盤外なら {-1,-1}
      */
+    //======================================
+    // 3D/2D 共通の盤面座標ヘルパ
+    //======================================
+    /**
+     * @brief  盤面セル座標(マス単位)をスクリーン座標へ変換する
+     * @param  u 列方向の位置 (盤外も可)
+     * @param  v 行方向の位置 (盤外も可)
+     * @param  h 盤面からの高さ(マス単位)。2Dビューでは無視される。
+     * @return スクリーン座標
+     * @detail 3Dビュー有効時は透視投影、無効時は従来の平面配置。
+     *         盤面・駒・インジケータの全描画がこの1点を通ることで、
+     *         視点切替を局所化している。
+     */
+    View3D::P2 BoardPoint(float u, float v, float h = 0.0f)
+    {
+        if (View3D::Enabled()) return View3D::Project(u, v, h);
+        return { BoardOriginX() + u * CellSize(),
+                 BoardOriginY() + v * CellSize() };
+    }
+
+    /**
+     * @brief  位置 v における1マスあたりのピクセル数 (遠近スケール)
+     * @param  v 行方向の位置
+     * @return ピクセル/マス。2Dビューでは一定。
+     */
+    float PxPerCell(float v)
+    {
+        return View3D::Enabled() ? View3D::Scale(v) : CellSize();
+    }
+
+    /**
+     * @brief  点が凸四角形の内部にあるか判定する (3Dピッキング用)
+     * @param  px,py 判定する点
+     * @param  a,b,c,d 四角形の頂点 (時計回り or 反時計回りの順)
+     * @return 内部(辺上含む)なら true
+     */
+    bool PointInQuad(float px, float py,
+                     const View3D::P2& a, const View3D::P2& b,
+                     const View3D::P2& c, const View3D::P2& d)
+    {
+        auto cross = [](const View3D::P2& o, const View3D::P2& q,
+                        float rx, float ry)
+        {
+            return (q.x - o.x) * (ry - o.y) - (q.y - o.y) * (rx - o.x);
+        };
+        const float c1 = cross(a, b, px, py);
+        const float c2 = cross(b, c, px, py);
+        const float c3 = cross(c, d, px, py);
+        const float c4 = cross(d, a, px, py);
+        // 全ての外積の符号が揃っていれば内部 (凸前提)
+        const bool anyNeg = (c1 < 0.0f || c2 < 0.0f || c3 < 0.0f || c4 < 0.0f);
+        const bool anyPos = (c1 > 0.0f || c2 > 0.0f || c3 > 0.0f || c4 > 0.0f);
+        return !(anyNeg && anyPos);
+    }
+
     Vec2 ScreenToCell(int sx, int sy)
     {
+        if (View3D::Enabled())
+        {
+            /*--- 3D: 各セルの投影四角形に対する内外判定で命中セルを探す ---*/
+            const float fx = static_cast<float>(sx);
+            const float fy = static_cast<float>(sy);
+            for (int y = 0; y < g_State.board.height; ++y)
+            {
+                for (int x = 0; x < g_State.board.width; ++x)
+                {
+                    const auto a = View3D::Project(static_cast<float>(x),     static_cast<float>(y));
+                    const auto b = View3D::Project(static_cast<float>(x + 1), static_cast<float>(y));
+                    const auto c = View3D::Project(static_cast<float>(x + 1), static_cast<float>(y + 1));
+                    const auto d = View3D::Project(static_cast<float>(x),     static_cast<float>(y + 1));
+                    if (PointInQuad(fx, fy, a, b, c, d)) return { x, y };
+                }
+            }
+            return { -1, -1 };
+        }
+
+        /*--- 2D: 従来の平面配置の逆変換 ---*/
         const float rx = sx - BoardOriginX();
         const float ry = sy - BoardOriginY();
         if (rx < 0 || ry < 0 || rx >= BOARD_SIZE || ry >= BOARD_SIZE)
@@ -879,6 +954,329 @@ namespace
         Prim::DrawLine(apexX, apexY, a2x, a2y, thickness, color);
     }
 
+    //======================================
+    // 3Dビュー描画 (斜め俯瞰の盤面と立体駒)
+    //======================================
+    //--------------------------------------
+    // 3D駒の造形パラメータ (マス単位)
+    //--------------------------------------
+    constexpr float P3_RING_R      = 0.30f;   // 〇リングの半径
+    constexpr float P3_RING_H_LOW  = 0.06f;   // 〇リング下段の高さ
+    constexpr float P3_RING_H_TOP  = 0.20f;   // 〇リング上段の高さ
+    constexpr float P3_CROSS_LEN   = 0.33f;   // ×バーの半長
+    constexpr float P3_CROSS_WID   = 0.085f;  // ×バーの半幅
+    constexpr float P3_CROSS_H     = 0.18f;   // ×バー上面の高さ
+    constexpr float P3_DROP_H      = 0.90f;   // 設置ドロップ演出の開始高さ
+
+    /**
+     * @brief  スクリーン座標の凸四角形を塗りつぶす (走査線方式)
+     * @param  a,b,c,d 頂点 (a-b が上辺、d-c が下辺になる向きで渡す)
+     * @param  color   塗り色
+     * @detail 左辺(a→d)と右辺(b→c)を補間した帯を重ねて面を表現する。
+     *         3Dビューにはポリゴン描画が無いため、太い線で代用する。
+     */
+    void FillQuad3D(const View3D::P2& a, const View3D::P2& b,
+                    const View3D::P2& c, const View3D::P2& d,
+                    const DirectX::XMFLOAT4& color)
+    {
+        constexpr int BANDS = 12;
+        // 左辺の全長から1帯の太さを求める (1.6倍重ねて隙間を消す)
+        const float edgeLen = std::sqrt((d.x - a.x) * (d.x - a.x)
+                                      + (d.y - a.y) * (d.y - a.y));
+        const float band = edgeLen / BANDS * 1.6f;
+        for (int i = 0; i < BANDS; ++i)
+        {
+            const float t = (i + 0.5f) / BANDS;
+            const float lx = a.x + (d.x - a.x) * t;
+            const float ly = a.y + (d.y - a.y) * t;
+            const float rx = b.x + (c.x - b.x) * t;
+            const float ry = b.y + (c.y - b.y) * t;
+            Prim::DrawLine(lx, ly, rx, ry, band, color);
+        }
+    }
+
+    /**
+     * @brief  セル(x,y)の投影四角形を塗りつぶす
+     * @param  x,y   セル座標
+     * @param  inset 縁からの内側マージン(マス)
+     * @param  color 塗り色
+     */
+    void FillCell3D(int x, int y, float inset, const DirectX::XMFLOAT4& color)
+    {
+        const float u0 = x + inset,     v0 = y + inset;
+        const float u1 = x + 1 - inset, v1 = y + 1 - inset;
+        FillQuad3D(View3D::Project(u0, v0), View3D::Project(u1, v0),
+                   View3D::Project(u1, v1), View3D::Project(u0, v1), color);
+    }
+
+    /**
+     * @brief  盤面上の円環を3D投影で描画する
+     * @param  u,v       中心のセル座標
+     * @param  radius    半径(マス)
+     * @param  h         高さ(マス)
+     * @param  thickness 線の太さ(マス)
+     * @param  color     基本色 (奥側は自動で暗くなる)
+     * @param  segments  円周の分割数
+     */
+    void Ring3D(float u, float v, float radius, float h,
+                float thickness, const DirectX::XMFLOAT4& color,
+                int segments = 28)
+    {
+        constexpr float PI_F = 3.14159265358979323846f;
+        View3D::P2 prev = View3D::Project(u + radius, v, h);
+        for (int i = 1; i <= segments; ++i)
+        {
+            const float a  = static_cast<float>(i) / segments * 2.0f * PI_F;
+            const float vv = v + std::sin(a) * radius;
+            const View3D::P2 cur = View3D::Project(u + std::cos(a) * radius, vv, h);
+
+            // 奥の弧ほど暗くして立体感を出す (vv が小さい=奥)
+            const float rel   = (std::sin(a) + 1.0f) * 0.5f;   // 0=奥, 1=手前
+            const float shade = 0.68f + 0.32f * rel;
+            const DirectX::XMFLOAT4 col{ color.x * shade, color.y * shade,
+                                         color.z * shade, color.w };
+            Prim::DrawLine(prev.x, prev.y, cur.x, cur.y,
+                           thickness * View3D::Scale(vv), col);
+            prev = cur;
+        }
+    }
+
+    /**
+     * @brief  ×駒の1本のバーを押し出し立体として描画する
+     * @param  u,v    中心のセル座標
+     * @param  dirX,Y バーの軸方向 (正規化済み)
+     * @param  scale  造形スケール (出現アニメ用)
+     * @param  hExtra 追加の高さ (ドロップ演出用)
+     */
+    void CrossBar3D(float u, float v, float dirX, float dirY,
+                    float scale, float hExtra)
+    {
+        const float L = P3_CROSS_LEN * scale;
+        const float W = P3_CROSS_WID * scale;
+        const float hTop = P3_CROSS_H * scale + hExtra;
+
+        // バー両端の中心線座標
+        const float e0u = u - dirX * L, e0v = v - dirY * L;
+        const float e1u = u + dirX * L, e1v = v + dirY * L;
+
+        // 接地影 (h=0 の暗い太線)
+        {
+            const View3D::P2 s0 = View3D::Project(e0u, e0v, 0.0f);
+            const View3D::P2 s1 = View3D::Project(e1u, e1v, 0.0f);
+            Prim::DrawLine(s0.x, s0.y, s1.x, s1.y,
+                           W * 2.1f * View3D::Scale(v),
+                           { 0.0f, 0.0f, 0.0f, 0.30f });
+        }
+
+        // 両端の支柱 (接地から上面へ。暗色で立体の厚みを示す)
+        DirectX::XMFLOAT4 sideCol{ COLOR_PIECE_X.x * 0.45f, COLOR_PIECE_X.y * 0.45f,
+                                   COLOR_PIECE_X.z * 0.45f, COLOR_PIECE_X.w };
+        {
+            const View3D::P2 b0 = View3D::Project(e0u, e0v, 0.0f);
+            const View3D::P2 t0 = View3D::Project(e0u, e0v, hTop);
+            const View3D::P2 b1 = View3D::Project(e1u, e1v, 0.0f);
+            const View3D::P2 t1 = View3D::Project(e1u, e1v, hTop);
+            Prim::DrawLine(b0.x, b0.y, t0.x, t0.y, W * 1.8f * View3D::Scale(e0v), sideCol);
+            Prim::DrawLine(b1.x, b1.y, t1.x, t1.y, W * 1.8f * View3D::Scale(e1v), sideCol);
+        }
+
+        // 上面 (明色の太線で面を表現)
+        {
+            const View3D::P2 t0 = View3D::Project(e0u, e0v, hTop);
+            const View3D::P2 t1 = View3D::Project(e1u, e1v, hTop);
+            Prim::DrawLine(t0.x, t0.y, t1.x, t1.y,
+                           W * 2.0f * View3D::Scale(v), COLOR_PIECE_X);
+        }
+    }
+
+    /**
+     * @brief  1マス分の駒を3Dの立体造形で描画する
+     * @param  p      駒の陣営 (Empty なら何も描かない)
+     * @param  u,v    セル中心のセル座標
+     * @param  scale  造形スケール (1=通常。出現アニメで0→1)
+     * @param  hExtra 追加の高さ (ドロップ演出用。通常0)
+     * @detail 〇は二段の円環(トーラス風)、×は押し出しクロス。
+     *         接地影と奥側の減光で立体感を出す。
+     */
+    void DrawPiece3D(Piece p, float u, float v, float scale = 1.0f,
+                     float hExtra = 0.0f)
+    {
+        if (p == Piece::Empty || scale <= 0.01f) return;
+
+        if (p == Piece::Player)
+        {
+            const float R = P3_RING_R * scale;
+
+            // 接地影
+            Ring3D(u, v, R * 0.95f, 0.0f, 0.10f * scale,
+                   { 0.0f, 0.0f, 0.0f, 0.30f }, 20);
+
+            // 下段リング (暗色) → 上段リング (明色) で円環の厚みを表現
+            const DirectX::XMFLOAT4 lowCol{ COLOR_PIECE_O.x * 0.45f,
+                                            COLOR_PIECE_O.y * 0.45f,
+                                            COLOR_PIECE_O.z * 0.45f, 1.0f };
+            Ring3D(u, v, R, P3_RING_H_LOW * scale + hExtra, 0.050f * scale, lowCol);
+            Ring3D(u, v, R, P3_RING_H_TOP * scale + hExtra, 0.062f * scale, COLOR_PIECE_O);
+        }
+        else
+        {
+            // ×: 2本のバーを45度交差で押し出し
+            constexpr float INV_SQRT2 = 0.70710678f;
+            CrossBar3D(u, v,  INV_SQRT2, INV_SQRT2, scale, hExtra);
+            CrossBar3D(u, v,  INV_SQRT2, -INV_SQRT2, scale, hExtra);
+        }
+    }
+
+    /**
+     * @brief  盤面と駒を3Dビュー(斜め俯瞰)で描画する
+     * @detail 盤面パネル→罫線→ホバー→グロー→駒(静止/アニメ補間)の順。
+     *         2D版 DrawBoardAndPieces と同じ状態機械を共有し、
+     *         描画座標の計算だけを透視投影に置き換えている。
+     */
+    void DrawBoardAndPieces3D()
+    {
+        const int cols = g_State.board.width;
+        const int rows = g_State.board.height;
+
+        /*--- 盤面パネル (外周マージン付きの台座) ---*/
+        {
+            const float m = 0.32f;
+            DirectX::XMFLOAT4 panel{ 0.02f, 0.02f, 0.04f, 0.85f };
+            if (g_Boss)
+            {
+                // ボステーマ色を僅かに含ませて沈んだ台座色にする
+                panel = { g_Boss->bgR * 0.5f, g_Boss->bgG * 0.5f,
+                          g_Boss->bgB * 0.5f, 0.92f };
+            }
+            FillQuad3D(View3D::Project(-m,          -m),
+                       View3D::Project(cols + m,    -m),
+                       View3D::Project(cols + m, rows + m),
+                       View3D::Project(-m,       rows + m), panel);
+        }
+
+        /*--- 罫線 (外枠含む) ---*/
+        for (int i = 0; i <= cols; ++i)
+        {
+            const View3D::P2 p0 = View3D::Project(static_cast<float>(i), 0.0f);
+            const View3D::P2 p1 = View3D::Project(static_cast<float>(i), static_cast<float>(rows));
+            Prim::DrawLine(p0.x, p0.y, p1.x, p1.y,
+                           0.022f * View3D::Scale(rows * 0.5f), COLOR_GRID);
+        }
+        for (int i = 0; i <= rows; ++i)
+        {
+            const View3D::P2 p0 = View3D::Project(0.0f,                      static_cast<float>(i));
+            const View3D::P2 p1 = View3D::Project(static_cast<float>(cols),  static_cast<float>(i));
+            Prim::DrawLine(p0.x, p0.y, p1.x, p1.y,
+                           0.022f * View3D::Scale(static_cast<float>(i)), COLOR_GRID);
+        }
+
+        /*--- ホバー中の空きセルをハイライト (プレイヤー手番のみ) ---*/
+        if (g_State.result == MatchResult::Playing
+            && g_State.currentPlayer == Piece::Player
+            && !IsEffectAnimating() && !g_AbilityPopupOpen)
+        {
+            const auto& mouse = InputManager_GetMouseState();
+            const Vec2 hover = ScreenToCell(mouse.x, mouse.y);
+            if (hover.x >= 0 && g_State.board.IsEmpty(hover.x, hover.y))
+            {
+                DirectX::XMFLOAT4 hi = COLOR_PIECE_O;
+                hi.w = 0.10f + 0.04f * static_cast<float>(
+                           std::sin(g_AnimClock * 4.0));
+                FillCell3D(hover.x, hover.y, 0.06f, hi);
+            }
+        }
+
+        /*--- 直近設置のグロー (広がって消える円環) ---*/
+        if (g_LastPlacedTimer > 0.0 && g_LastPlacedPos.x >= 0)
+        {
+            const float t = static_cast<float>(g_LastPlacedTimer / GLOW_DURATION); // 1→0
+            const float glowR = P3_RING_R * (1.0f + (1.0f - t) * 0.7f);
+            DirectX::XMFLOAT4 glow = (g_LastPlacedPiece == Piece::Player)
+                ? COLOR_PIECE_O : COLOR_PIECE_X;
+            glow.w = t * 0.45f;
+            Ring3D(g_LastPlacedPos.x + 0.5f, g_LastPlacedPos.y + 0.5f,
+                   glowR, 0.10f, 0.10f, glow, 24);
+        }
+
+        if (IsEffectAnimating())
+        {
+            /*--- 効果アニメ中: 再生中フェーズの中間状態を描画 ---*/
+            const int                 phaseIdx = g_AnimPhaseIndex;
+            const Board&              disp     = g_PhaseStartBoards[phaseIdx];
+            const BoardOps::MoveList& phase    = g_AnimPhases[phaseIdx];
+
+            // 進捗 0→1 (ease-out で滑らかに減速)
+            float raw = 1.0f - static_cast<float>(g_AnimPhaseTimer / g_PhaseDuration);
+            raw = (raw < 0.0f) ? 0.0f : (raw > 1.0f ? 1.0f : raw);
+            const float t = 1.0f - (1.0f - raw) * (1.0f - raw);
+
+            // このフェーズで動かない駒を静止描画 (出現の発生源は静止扱い)
+            for (int y = 0; y < disp.height; ++y)
+            {
+                for (int x = 0; x < disp.width; ++x)
+                {
+                    bool isMover = false;
+                    for (const auto& m : phase)
+                    {
+                        if (!m.isSpawn && m.fromX == x && m.fromY == y)
+                        {
+                            isMover = true;
+                            break;
+                        }
+                    }
+                    if (isMover) continue;
+                    DrawPiece3D(disp.Get(x, y), x + 0.5f, y + 0.5f);
+                }
+            }
+            // 移動駒は補間、出現駒は拡大+連鎖パルス線
+            for (const auto& m : phase)
+            {
+                if (m.isSpawn)
+                {
+                    if (m.fromX >= 0 && m.fromY >= 0)
+                    {
+                        const View3D::P2 s = View3D::Project(m.fromX + 0.5f, m.fromY + 0.5f, 0.12f);
+                        const View3D::P2 e = View3D::Project(m.toX + 0.5f,   m.toY + 0.5f,   0.12f);
+                        DirectX::XMFLOAT4 pulse = COLOR_CHAIN_PULSE;
+                        pulse.w = (1.0f - t) * 0.7f;
+                        Prim::DrawLine(s.x, s.y, e.x, e.y,
+                                       0.030f * View3D::Scale(m.toY + 0.5f), pulse);
+                    }
+                    DrawPiece3D(m.piece, m.toX + 0.5f, m.toY + 0.5f, t);
+                }
+                else
+                {
+                    const float fu = m.fromX + (m.toX - m.fromX) * t + 0.5f;
+                    const float fv = m.fromY + (m.toY - m.fromY) * t + 0.5f;
+                    DrawPiece3D(m.piece, fu, fv);
+                }
+            }
+        }
+        else
+        {
+            /*--- 非アニメ時: 現在の盤面をそのまま描画 ---*/
+            for (int y = 0; y < rows; ++y)
+            {
+                for (int x = 0; x < cols; ++x)
+                {
+                    const Piece p = g_State.board.Get(x, y);
+                    if (p == Piece::Empty) continue;
+
+                    // 直近に置いた駒は上空から落ちて着地する演出を付ける
+                    float hExtra = 0.0f;
+                    if (g_LastPlacedTimer > 0.0
+                        && x == g_LastPlacedPos.x && y == g_LastPlacedPos.y)
+                    {
+                        const float t = static_cast<float>(
+                            g_LastPlacedTimer / GLOW_DURATION);   // 1→0
+                        hExtra = t * t * P3_DROP_H;
+                    }
+                    DrawPiece3D(p, x + 0.5f, y + 0.5f, 1.0f, hExtra);
+                }
+            }
+        }
+    }
+
     /**
      * @brief  盤面の罫線と駒を描画する
      * @detail 効果アニメ中はフェーズ中間状態を補間描画し、
@@ -886,6 +1284,13 @@ namespace
      */
     void DrawBoardAndPieces()
     {
+        // 3Dビュー有効時は斜め俯瞰の立体描画へ委譲する
+        if (View3D::Enabled())
+        {
+            DrawBoardAndPieces3D();
+            return;
+        }
+
         const float ox = BoardOriginX();
         const float oy = BoardOriginY();
 
@@ -1013,30 +1418,28 @@ namespace
      */
     void DrawDirChevrons(Direction d)
     {
-        const float     ox = BoardOriginX();
-        const float     oy = BoardOriginY();
+        const float cols = static_cast<float>(g_State.board.width);
+        const float rows = static_cast<float>(g_State.board.height);
+        const float M    = 0.18f;   // 盤端からの距離(マス)
         const bool horizontalSlide = (d == Direction::Left || d == Direction::Right);
 
         for (int i = 0; i < CHEVRON_COUNT; ++i)
         {
             // 辺に沿った位置 (端を避けて等間隔に分散)
-            const float frac  = (i + 1.0f) / (CHEVRON_COUNT + 1.0f);
-            const float along = BOARD_SIZE * frac;
+            const float frac = (i + 1.0f) / (CHEVRON_COUNT + 1.0f);
 
-            float cx, cy;
+            float u, v;
             if (horizontalSlide)
             {
                 // 左右スライド → 縦の辺に沿って縦並び
-                cy = oy + along;
-                cx = (d == Direction::Right) ? (ox + BOARD_SIZE + CHEVRON_MARGIN)
-                                             : (ox - CHEVRON_MARGIN);
+                v = rows * frac;
+                u = (d == Direction::Right) ? (cols + M) : (-M);
             }
             else
             {
                 // 上下スライド → 横の辺に沿って横並び
-                cx = ox + along;
-                cy = (d == Direction::Down) ? (oy + BOARD_SIZE + CHEVRON_MARGIN)
-                                            : (oy - CHEVRON_MARGIN);
+                u = cols * frac;
+                v = (d == Direction::Down) ? (rows + M) : (-M);
             }
 
             // 滑る方向へ流れる脈動 (位相を矢印ごとにずらす)
@@ -1045,7 +1448,9 @@ namespace
             DirectX::XMFLOAT4 col = COLOR_SLIDE_ARROW;
             col.w = 0.30f + 0.60f * wave;
 
-            DrawChevron(cx, cy, d, CHEVRON_SIZE, CHEVRON_THICKNESS, col);
+            const auto  p  = BoardPoint(u, v, 0.10f);
+            const float px = PxPerCell(v);
+            DrawChevron(p.x, p.y, d, 0.10f * px, 0.034f * px, col);
         }
     }
 
@@ -1057,28 +1462,28 @@ namespace
      */
     void DrawRotChevrons(bool cw)
     {
-        const float ox   = BoardOriginX();
-        const float oy   = BoardOriginY();
-        const float half = BOARD_SIZE * 0.5f;
+        const float cols = static_cast<float>(g_State.board.width);
+        const float rows = static_cast<float>(g_State.board.height);
+        const float M    = 0.18f;   // 盤端からの距離(マス)
 
         // 四辺のシェブロンを「循環順」に並べる。各辺は循環方向を指す。
-        struct Spot { float cx, cy; Direction dir; };
+        struct Spot { float u, v; Direction dir; };
         Spot spots[4];
         if (cw)
         {
             // 時計回り: 上(右向き)→右(下向き)→下(左向き)→左(上向き)
-            spots[0] = { ox + half,                        oy - CHEVRON_MARGIN,            Direction::Right };
-            spots[1] = { ox + BOARD_SIZE + CHEVRON_MARGIN, oy + half,                      Direction::Down  };
-            spots[2] = { ox + half,                        oy + BOARD_SIZE + CHEVRON_MARGIN, Direction::Left };
-            spots[3] = { ox - CHEVRON_MARGIN,              oy + half,                      Direction::Up    };
+            spots[0] = { cols * 0.5f, -M,           Direction::Right };
+            spots[1] = { cols + M,    rows * 0.5f,  Direction::Down  };
+            spots[2] = { cols * 0.5f, rows + M,     Direction::Left  };
+            spots[3] = { -M,          rows * 0.5f,  Direction::Up    };
         }
         else
         {
             // 反時計回り: 上(左向き)→左(下向き)→下(右向き)→右(上向き)
-            spots[0] = { ox + half,                        oy - CHEVRON_MARGIN,            Direction::Left  };
-            spots[1] = { ox - CHEVRON_MARGIN,              oy + half,                      Direction::Down  };
-            spots[2] = { ox + half,                        oy + BOARD_SIZE + CHEVRON_MARGIN, Direction::Right };
-            spots[3] = { ox + BOARD_SIZE + CHEVRON_MARGIN, oy + half,                      Direction::Up    };
+            spots[0] = { cols * 0.5f, -M,           Direction::Left  };
+            spots[1] = { -M,          rows * 0.5f,  Direction::Down  };
+            spots[2] = { cols * 0.5f, rows + M,     Direction::Right };
+            spots[3] = { cols + M,    rows * 0.5f,  Direction::Up    };
         }
 
         for (int i = 0; i < 4; ++i)
@@ -1089,8 +1494,9 @@ namespace
             DirectX::XMFLOAT4 col = COLOR_ROTATE_ARROW;
             col.w = 0.30f + 0.60f * wave;
 
-            DrawChevron(spots[i].cx, spots[i].cy, spots[i].dir,
-                        CHEVRON_SIZE, CHEVRON_THICKNESS, col);
+            const auto  p  = BoardPoint(spots[i].u, spots[i].v, 0.10f);
+            const float px = PxPerCell(spots[i].v);
+            DrawChevron(p.x, p.y, spots[i].dir, 0.10f * px, 0.034f * px, col);
         }
     }
 
@@ -1101,13 +1507,14 @@ namespace
      */
     void DrawGravityChevrons()
     {
-        const float ox = BoardOriginX();
-        const float oy = BoardOriginY();
+        const float cols = static_cast<float>(g_State.board.width);
+        const float rows = static_cast<float>(g_State.board.height);
+        const float M    = 0.18f;   // 盤端からの距離(マス)
 
         for (int i = 0; i < CHEVRON_COUNT; ++i)
         {
-            const float frac  = (i + 1.0f) / (CHEVRON_COUNT + 1.0f);
-            const float cy    = oy + BOARD_SIZE * frac;
+            const float frac = (i + 1.0f) / (CHEVRON_COUNT + 1.0f);
+            const float v    = rows * frac;
 
             // 下へ流れる脈動 (上の矢印ほど先に光る)
             const float wave = 0.5f + 0.5f * std::sin(
@@ -1116,10 +1523,11 @@ namespace
             col.w = 0.30f + 0.60f * wave;
 
             // 左右両辺に下向きシェブロンを描く
-            DrawChevron(ox - CHEVRON_MARGIN,              cy, Direction::Down,
-                        CHEVRON_SIZE, CHEVRON_THICKNESS, col);
-            DrawChevron(ox + BOARD_SIZE + CHEVRON_MARGIN, cy, Direction::Down,
-                        CHEVRON_SIZE, CHEVRON_THICKNESS, col);
+            const auto  pl = BoardPoint(-M,       v, 0.10f);
+            const auto  pr = BoardPoint(cols + M, v, 0.10f);
+            const float px = PxPerCell(v);
+            DrawChevron(pl.x, pl.y, Direction::Down, 0.10f * px, 0.034f * px, col);
+            DrawChevron(pr.x, pr.y, Direction::Down, 0.10f * px, 0.034f * px, col);
         }
     }
 
@@ -1130,30 +1538,34 @@ namespace
      */
     void DrawChainCorners()
     {
-        const float ox = BoardOriginX();
-        const float oy = BoardOriginY();
-        const float m  = CHEVRON_MARGIN;
+        const float cols = static_cast<float>(g_State.board.width);
+        const float rows = static_cast<float>(g_State.board.height);
+        const float M    = 0.18f;   // 盤端からの距離(マス)
 
         const float corners[4][2] = {
-            { ox - m,              oy - m },
-            { ox + BOARD_SIZE + m, oy - m },
-            { ox - m,              oy + BOARD_SIZE + m },
-            { ox + BOARD_SIZE + m, oy + BOARD_SIZE + m },
+            { -M,       -M },
+            { cols + M, -M },
+            { -M,       rows + M },
+            { cols + M, rows + M },
         };
 
         // 鼓動風の脈動 (全隅が同位相で強く明滅する)
         const float beat = 0.5f + 0.5f * std::sin(static_cast<float>(g_AnimClock) * 6.0f);
         DirectX::XMFLOAT4 col = COLOR_CHAIN_PULSE;
         col.w = 0.25f + 0.65f * beat;
-        const float r = CHEVRON_SIZE * (0.7f + 0.3f * beat);
 
         for (const auto& c : corners)
         {
+            const auto  p  = BoardPoint(c[0], c[1], 0.10f);
+            const float px = PxPerCell(c[1]);
+            const float r  = 0.10f * px * (0.7f + 0.3f * beat);
+            const float th = 0.024f * px;
+
             // 4本の線でダイヤ(◇)を描く
-            Prim::DrawLine(c[0],     c[1] - r, c[0] + r, c[1],     CHEVRON_THICKNESS * 0.7f, col);
-            Prim::DrawLine(c[0] + r, c[1],     c[0],     c[1] + r, CHEVRON_THICKNESS * 0.7f, col);
-            Prim::DrawLine(c[0],     c[1] + r, c[0] - r, c[1],     CHEVRON_THICKNESS * 0.7f, col);
-            Prim::DrawLine(c[0] - r, c[1],     c[0],     c[1] - r, CHEVRON_THICKNESS * 0.7f, col);
+            Prim::DrawLine(p.x,     p.y - r, p.x + r, p.y,     th, col);
+            Prim::DrawLine(p.x + r, p.y,     p.x,     p.y + r, th, col);
+            Prim::DrawLine(p.x,     p.y + r, p.x - r, p.y,     th, col);
+            Prim::DrawLine(p.x - r, p.y,     p.x,     p.y - r, th, col);
         }
     }
 
@@ -1747,6 +2159,12 @@ void Game_Finalize()
 //======================================
 void Game_Update(double elapsed_time)
 {
+    // 3Dカメラを現在の盤面サイズ・画面サイズに合わせる
+    // (クリックのセル判定が投影を参照するため、更新側でも構成する)
+    View3D::Setup(g_State.board.width, g_State.board.height,
+                  static_cast<float>(Direct3D_GetBackBufferWidth()),
+                  static_cast<float>(Direct3D_GetBackBufferHeight()));
+
     g_AnimClock += elapsed_time;  // シェブロン脈動用クロック
     if (g_TimerFlash    > 0.0) g_TimerFlash    -= elapsed_time;
     if (g_ImmortalFlash > 0.0) g_ImmortalFlash -= elapsed_time;
@@ -1861,6 +2279,11 @@ void Game_Update(double elapsed_time)
 //======================================
 void Game_Draw()
 {
+    // 3Dカメラを現在の盤面サイズ・画面サイズに合わせる
+    View3D::Setup(g_State.board.width, g_State.board.height,
+                  static_cast<float>(Direct3D_GetBackBufferWidth()),
+                  static_cast<float>(Direct3D_GetBackBufferHeight()));
+
     // ボスごとのテーマ色で全画面背景を塗る (盤面の周囲に雰囲気を出す)
     if (g_Boss)
     {

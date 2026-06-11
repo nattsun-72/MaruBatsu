@@ -47,10 +47,14 @@ namespace WinCheck
     //======================================
     // 連続並びの達成判定
     //======================================
-    bool HasLine(const Board& board, Piece player, int required)
+    bool HasLine(const Board& board, Piece player, int required,
+                 bool includeDiagonals)
     {
         if (player == Piece::Empty) return false;  // 空マスは勝利対象外
         if (required <= 0) return true;            // 0本要求は常に達成扱い
+
+        // 斜め無効時は先頭2方向 (右/下) のみ走査する
+        const int dirCount = includeDiagonals ? DIR_COUNT : 2;
 
         // 全マスを始点候補として、各方向のライン長を調べる
         for (int y = 0; y < board.height; ++y)
@@ -58,7 +62,7 @@ namespace WinCheck
             for (int x = 0; x < board.width; ++x)
             {
                 if (board.Get(x, y) != player) continue;
-                for (int d = 0; d < DIR_COUNT; ++d)
+                for (int d = 0; d < dirCount; ++d)
                 {
                     const int dx = DIRS[d][0];
                     const int dy = DIRS[d][1];

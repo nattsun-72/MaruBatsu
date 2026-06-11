@@ -42,9 +42,10 @@ BossIceSlideAbility::BossIceSlideAbility()
 //======================================
 void BossIceSlideAbility::OnPlace(GameState& state, Vec2 /*pos*/, Piece /*placedBy*/)
 {
-    // 全駒スライドを実行し、その移動を1つの効果フェーズとして記録する(アニメ用)
+    // 全駒スライドを実行し、その移動を1つの効果フェーズとして記録する(アニメ用)。
+    // 重駒アビリティ所持時は slideAnchorSide の駒が固定され滑らない。
     BoardOps::MoveList moves;
-    BoardOps::SlideAll(state.board, currentDir, &moves);
+    BoardOps::SlideAll(state.board, currentDir, &moves, state.slideAnchorSide);
     if (!moves.empty())
     {
         state.animPhases.push_back(std::move(moves));

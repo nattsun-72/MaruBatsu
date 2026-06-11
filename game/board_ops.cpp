@@ -15,7 +15,8 @@ namespace BoardOps
     //======================================
     // 全駒スライド
     //======================================
-    void SlideAll(Board& board, Direction dir, std::vector<Move>* outMoves)
+    void SlideAll(Board& board, Direction dir, std::vector<Move>* outMoves,
+                  Piece anchoredSide)
     {
         /*--- 走査方向の決定 ---*/
         // horizontal: 左右スライドなら行ごと、上下なら列ごとに処理する
@@ -33,40 +34,45 @@ namespace BoardOps
         /*--- ライン単位で駒を端へ詰める ---*/
         for (int line = 0; line < lineCount; ++line)
         {
-            // 1) 非空の駒を出現順に収集 (順序を保ったまま詰めるため)
-            struct Item { Piece piece; Vec2 from; };
-            std::vector<Item> kept;
-            kept.reserve(static_cast<size_t>(lineLen));
+            // 1) ラインの内容を控えてから一旦全消去する
+            std::vector<Piece> src(static_cast<size_t>(lineLen));
             for (int i = 0; i < lineLen; ++i)
             {
                 const Vec2 c = cellAt(line, i);
-                const Piece p = board.Get(c.x, c.y);
-                if (p != Piece::Empty) kept.push_back({ p, c });
-            }
-
-            // 2) ラインを一旦全消去
-            for (int i = 0; i < lineLen; ++i)
-            {
-                const Vec2 c = cellAt(line, i);
+                src[static_cast<size_t>(i)] = board.Get(c.x, c.y);
                 board.Set(c.x, c.y, Piece::Empty);
             }
 
-            // 3) 端へ詰めて再配置し、移動した駒を記録する
-            const int offset = toEnd
-                ? (lineLen - static_cast<int>(kept.size()))  // 末尾寄せの開始位置
-                : 0;                                         // 先頭寄せ
-            for (int k = 0; k < static_cast<int>(kept.size()); ++k)
+            // 2) 滑走先の端から順に走査して詰め直す。
+            //    固定駒(anchoredSide)は元の位置に置き直し、それ以降の
+            //    可動駒は固定駒の手前までしか滑れない (障害物として働く)。
+            //    走査順: 末尾寄せなら lineLen-1→0、先頭寄せなら 0→lineLen-1。
+            const int start = toEnd ? lineLen - 1 : 0;
+            const int step  = toEnd ? -1 : 1;
+            int dst = start;   // 次に可動駒が収まる位置
+            for (int k = 0, i = start; k < lineLen; ++k, i += step)
             {
-                const Vec2 dst = cellAt(line, offset + k);
-                board.Set(dst.x, dst.y, kept[k].piece);
+                const Piece p = src[static_cast<size_t>(i)];
+                if (p == Piece::Empty) continue;
 
-                // 実際に位置が変わった駒だけ移動記録へ追加
-                if (outMoves
-                    && (dst.x != kept[k].from.x || dst.y != kept[k].from.y))
+                if (anchoredSide != Piece::Empty && p == anchoredSide)
                 {
-                    outMoves->push_back({ kept[k].from.x, kept[k].from.y,
-                                          dst.x, dst.y, kept[k].piece });
+                    // 固定駒: 動かず元の位置へ。後続の可動駒はこの先(手前)まで。
+                    const Vec2 c = cellAt(line, i);
+                    board.Set(c.x, c.y, p);
+                    dst = i + step;
+                    continue;
                 }
+
+                // 可動駒: dst へ詰める
+                const Vec2 from = cellAt(line, i);
+                const Vec2 to   = cellAt(line, dst);
+                board.Set(to.x, to.y, p);
+                if (outMoves && (to.x != from.x || to.y != from.y))
+                {
+                    outMoves->push_back({ from.x, from.y, to.x, to.y, p });
+                }
+                dst += step;
             }
         }
     }
@@ -91,6 +97,28 @@ namespace BoardOps
         board.Set(x, y, Piece::Empty);
         board.Set(nx, ny, p);
         if (outMoves) outMoves->push_back({ x, y, nx, ny, p });
+        return true;
+    }
+
+    //======================================
+    // 落下
+    //======================================
+    bool DropDown(Board& board, int x, int y, std::vector<Move>* outMoves)
+    {
+        /*--- 落下可否の判定 ---*/
+        if (!board.IsValid(x, y)) return false;
+        const Piece p = board.Get(x, y);
+        if (p == Piece::Empty) return false;
+
+        // 直下から連続する空きマスの最下端を探す
+        int destY = y;
+        while (board.IsEmpty(x, destY + 1)) ++destY;
+        if (destY == y) return false;   // 直下が埋まっている
+
+        /*--- 落下の実行 ---*/
+        board.Set(x, y, Piece::Empty);
+        board.Set(x, destY, p);
+        if (outMoves) outMoves->push_back({ x, y, x, destY, p });
         return true;
     }
 

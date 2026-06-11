@@ -55,11 +55,15 @@ namespace BoardOps
     /**
      * @brief  全ての駒を指定方向の端まで滑らせる (2048タイル風)
      * @detail 各ライン(行または列)ごとに、駒の順序を保ったまま端へ詰める。
-     * @param  board    対象の盤面 (直接書き換える)
-     * @param  dir      滑らせる方向
-     * @param  outMoves 非nullなら、実際に移動した駒の記録を追記する
+     *         anchoredSide の駒は「重い」ため動かず、他の駒は
+     *         その駒や壁に当たるまで滑る (重駒アビリティ対応)。
+     * @param  board        対象の盤面 (直接書き換える)
+     * @param  dir          滑らせる方向
+     * @param  outMoves     非nullなら、実際に移動した駒の記録を追記する
+     * @param  anchoredSide 固定する陣営 (Empty なら全駒が滑る)
      */
-    void SlideAll(Board& board, Direction dir, std::vector<Move>* outMoves = nullptr);
+    void SlideAll(Board& board, Direction dir, std::vector<Move>* outMoves = nullptr,
+                  Piece anchoredSide = Piece::Empty);
 
     /**
      * @brief  指定マスの駒を1マスだけ滑らせる
@@ -76,6 +80,17 @@ namespace BoardOps
     //--------------------------------------
     // 回転操作
     //--------------------------------------
+    /**
+     * @brief  指定マスの駒を、その列の一番下の空きマスまで落下させる
+     * @detail 重力ギミック(ボス4等)から利用する。直下が埋まっていれば
+     *         何もしない。
+     * @param  board    対象の盤面 (直接書き換える)
+     * @param  x,y      落下させる駒のマス座標
+     * @param  outMoves 非nullなら、移動が起きた場合に記録を追記する
+     * @return 実際に落下したら true
+     */
+    bool DropDown(Board& board, int x, int y, std::vector<Move>* outMoves = nullptr);
+
     /**
      * @brief  盤面を90度回転させる (正方盤のみ)
      * @detail 盤面の全駒を時計回り/反時計回りに90度回転する。

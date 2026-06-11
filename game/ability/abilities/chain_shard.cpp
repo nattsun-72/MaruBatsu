@@ -1,10 +1,10 @@
 /****************************************
- * @file   boss_chain_pulse.cpp
- * @brief  連鎖鼓動 (ボス側アビリティ) の実装
+ * @file   chain_shard.cpp
+ * @brief  連鎖の欠片の実装
  * @author Natsume Shidara
- * @date   2026/06/05
+ * @date   2026/06/11
  ****************************************/
-#include "boss_chain_pulse.h"
+#include "chain_shard.h"
 
 #include "ability/ability_registry.h"
 #include "board.h"
@@ -56,46 +56,54 @@ namespace
 //======================================
 // 構築
 //======================================
-BossChainPulseAbility::BossChainPulseAbility()
+ChainShardAbility::ChainShardAbility()
 {
-    name        = "連鎖鼓動";
-    description = "ボスが駒を置くたび\n隣接マスへ拡張する";
+    name        = "連鎖の欠片";
+    description = "クリックで装填。次の\n自駒設置で隣へ拡張";
     rarity      = Rarity::Rare;
-    pulseSteps  = Config::GetInt("bosses.chainPulse.pulseSteps", 1);
+    activatable = true;
+    flashText   = "連鎖装填！";
+    charges     = Config::GetInt("abilities.chainShard.charges", 3);
+}
+
+//======================================
+// 任意発動アビリティのインターフェイス
+//======================================
+void ChainShardAbility::Activate(GameState& /*state*/)
+{
+    if (charges <= 0 || armed) return;
+    --charges;
+    armed = true;   // 次の自駒設置で OnPlace が拡張を実行する
+}
+
+bool ChainShardAbility::CanActivate(const GameState& /*state*/) const
+{
+    return charges > 0 && !armed;
 }
 
 //======================================
 // IPlacementHandler
 //======================================
-void BossChainPulseAbility::OnPlace(GameState& state, Vec2 pos, Piece placedBy)
+void ChainShardAbility::OnPlace(GameState& state, Vec2 pos, Piece placedBy)
 {
-    if (placedBy != targetSide) return;   // 対象陣営の設置のみ拡張する
+    if (!armed) return;                    // 装填していなければ何もしない
+    if (placedBy != Piece::Player) return; // 自駒の設置のみ対象
 
-    /*--- 起点から連鎖的に隣接空きマスへ同色駒を出現させる ---*/
-    BoardOps::MoveList spawns;
-    Vec2 from = pos;
-    for (int step = 0; step < pulseSteps; ++step)
-    {
-        const Vec2 cell = PickEmptyNeighbor(state.board, from);
-        if (cell.x < 0) break;            // 空き隣接が無ければ連鎖終了
+    armed = false;   // 装填を消費 (拡張先が無くても消費される)
 
-        state.board.Set(cell.x, cell.y, targetSide);
-        // 出現(isSpawn): from=発生源(盤上に残る), to=出現先
-        spawns.push_back({ from.x, from.y, cell.x, cell.y, targetSide, true });
-        from = cell;                      // 出現した駒を起点に次の連鎖へ
-    }
+    // 設置マスの隣接空きマスへ自駒を1個出現させる
+    const Vec2 cell = PickEmptyNeighbor(state.board, pos);
+    if (cell.x < 0) return;
 
-    // 各出現を個別フェーズにして順次(連鎖的に)アニメ再生する
-    for (const auto& s : spawns)
-    {
-        state.animPhases.push_back({ s });
-    }
+    state.board.Set(cell.x, cell.y, Piece::Player);
+    // 出現(isSpawn): from=発生源(盤上に残る), to=出現先
+    state.animPhases.push_back({ { pos.x, pos.y, cell.x, cell.y, Piece::Player, true } });
 }
 
 //======================================
 // Ability
 //======================================
-void BossChainPulseAbility::RegisterTo(AbilityRegistry& registry)
+void ChainShardAbility::RegisterTo(AbilityRegistry& registry)
 {
     // 設置ハンドラとして追加登録 (他の設置効果と共存可能)
     auto self = shared_from_this();

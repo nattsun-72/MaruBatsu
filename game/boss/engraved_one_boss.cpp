@@ -5,6 +5,7 @@
  * @date   2026/06/05
  ****************************************/
 #include "engraved_one_boss.h"
+#include "ability/abilities/boss_engraved.h"
 #include "ability/abilities/contemplation.h"
 
 //======================================
@@ -13,7 +14,7 @@
 EngravedOneBoss::EngravedOneBoss()
 {
     name        = "刻まれし者";
-    description = "過去の支配者たちの力が宿る（実装予定）";
+    description = "毎ターン、過去の支配者たちの力を振るう";
     difficulty  = 5;
     // テーマ色: 複合の深い紫紺
     bgR = 0.10f; bgG = 0.05f; bgB = 0.12f;
@@ -24,9 +25,8 @@ EngravedOneBoss::EngravedOneBoss()
 //======================================
 std::vector<std::shared_ptr<Ability>> EngravedOneBoss::GetBossAbilities()
 {
-    // W1第1増分: 複合ギミック未実装。空を返すと通常の〇×として成立する。
-    // 撃破でランクリア(完走)に到達するフローをまず通すのが本スタブの目的。
-    return {};
+    // ボス側ギミック: 毎ターン「氷盤/螺旋/連鎖/重力」を切り替えて振るう複合体
+    return { std::make_shared<BossEngravedAbility>() };
 }
 
 std::shared_ptr<Ability> EngravedOneBoss::GetRewardAbility()

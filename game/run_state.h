@@ -71,7 +71,15 @@ namespace RunState
     /** @brief ラン状態を完全リセット (タイトルから新ラン開始時に呼ぶ) */
     void ResetRun();
 
-    /** @brief 報酬の3択をプールからランダム抽選して生成する */
+    /**
+     * @brief  撃破したボスの固有報酬を次回の報酬候補へ予約する
+     * @param  reward ボスの GetRewardAbility() が返す弱化版アビリティ
+     * @detail 次の GenerateRewardChoices で選択肢の1枠に必ず含まれる
+     *         (一度限りで所持済みの場合は通常抽選にフォールバック)。
+     */
+    void SetPendingBossReward(std::shared_ptr<Ability> reward);
+
+    /** @brief 報酬の選択肢をレアリティ重み付き抽選で生成する */
     void GenerateRewardChoices();
 
     //======================================

@@ -10,6 +10,7 @@
 #include "run_state.h"
 #include "render_primitives.h"
 #include "text_draw.h"
+#include "config.h"
 
 #include "direct3d.h"
 #include "input_manager.h"
@@ -99,6 +100,9 @@ namespace
 //======================================
 void Title_Initialize()
 {
+    // 設定ファイルを再読込 (タイトルへ戻るたびに調整が反映される)
+    Config::Reload();
+
     // 描画モジュールを初期化し、点滅タイマーをリセット
     Prim::Initialize();
     Text::Initialize();

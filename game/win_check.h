@@ -22,12 +22,15 @@ namespace WinCheck
     /**
      * @brief  player が指定本数の連続並びを達成しているか判定
      * @detail 縦・横・斜めの全方向を走査する。
-     * @param  board    対象の盤面
-     * @param  player   判定する陣営
-     * @param  required 勝利に必要な連続数 (デフォルト3)
+     * @param  board            対象の盤面
+     * @param  player           判定する陣営
+     * @param  required         勝利に必要な連続数 (デフォルト3)
+     * @param  includeDiagonals false なら斜めを除き縦横のみ判定する
+     *                          (対角線無効アビリティ等が使用)
      * @return 達成していれば true
      */
-    bool HasLine(const Board& board, Piece player, int required = 3);
+    bool HasLine(const Board& board, Piece player, int required = 3,
+                 bool includeDiagonals = true);
 
     /**
      * @brief  player の最大連続長を取得

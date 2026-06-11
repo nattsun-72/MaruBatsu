@@ -1,0 +1,53 @@
+{
+  // ================================================
+  //  MaruBatsu ゲームパラメータ設定 (JSONC形式)
+  //  - BOMなしUTF-8 / 行コメント(//)可
+  //  - タイトル画面に戻るたびに再読込される
+  //    (ゲームを再起動せずに調整を反映できる)
+  // ================================================
+
+  // --- 基本ルール ---
+  "rules": {
+    "turnTimeSeconds":    180.0,   // 1ターンの思考時間(秒)
+    "aiDelaySeconds":     0.35,    // AIが着手するまでの間(秒)
+    "boardCols":          3,       // 盤面の横マス数(既定)
+    "boardRows":          3,       // 盤面の縦マス数(既定)
+    "rewardChoiceCount":  3,       // 報酬画面の選択肢数
+    "effectPhaseSeconds": 0.18     // 効果アニメ1フェーズの再生秒数
+  },
+
+  // --- 3Dビュー (斜め俯瞰視点) ---
+  "view": {
+    "use3D":             true,    // false にすると従来の2D真上視点に戻る
+    "cameraPitchDeg":    58.0,    // カメラの俯角(90=真上, 小さいほど水平寄り)
+    "cameraFovDeg":      38.0,    // 視野角
+    "boardScreenWidth":  560.0,   // 盤面手前側の画面上の幅(px)
+    "boardCenterYRatio": 0.54     // 盤面中心の画面Y位置(0-1)
+  },
+
+  // --- 報酬抽選のレアリティ重み (大きいほど出やすい) ---
+  "rarityWeights": {
+    "common":    50,
+    "rare":      30,
+    "epic":      16,
+    "legendary": 4
+  },
+
+  // --- プレイヤーアビリティ ---
+  "abilities": {
+    "contemplation": { "bonusSeconds": 30.0 },          // 熟考
+    "margin":        { "bonusSeconds": 60.0 },          // 余裕
+    "focus":         { "charges": 3, "bonusSeconds": 120.0 },  // 集中
+    "twoHands":      { "placementCount": 2 },           // 二手打ち
+    "boardExpand":   { "width": 4, "height": 4 },       // 盤面拡張
+    "spiralShard":   { "charges": 2 },                  // 螺旋の欠片
+    "chainShard":    { "charges": 3 },                  // 連鎖の欠片
+    "immortal":      { "charges": 2 }                   // 不死
+  },
+
+  // --- ボスギミック ---
+  "bosses": {
+    "chainPulse": { "pulseSteps": 1 },   // 連鎖の鼓動: 1設置あたりの拡張数
+    "engraved":   { "pulseSteps": 1 }    // 刻まれし者: 連鎖モードの拡張数
+  }
+}

@@ -6,16 +6,28 @@
  ****************************************/
 #include "focus.h"
 #include "game_state.h"
+#include "config.h"
+
+#include <cstdio>
 
 //======================================
 // 構築
 //======================================
 FocusAbility::FocusAbility()
 {
-    name        = "集中";
-    description = "クリックで\nこのターン +2分";
-    rarity      = Rarity::Common;
-    activatable = true;   // 任意発動アビリティとして登録
+    name         = "集中";
+    rarity       = Rarity::Common;
+    activatable  = true;   // 任意発動アビリティとして登録
+    charges      = Config::GetInt("abilities.focus.charges", 3);
+    bonusSeconds = Config::GetDouble("abilities.focus.bonusSeconds", 120.0);
+
+    const int m = static_cast<int>(bonusSeconds) / 60;
+    const int s = static_cast<int>(bonusSeconds) % 60;
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "クリックで\nこのターン +%d:%02d", m, s);
+    description = buf;
+    std::snprintf(buf, sizeof(buf), "+%d:%02d", m, s);
+    flashText   = buf;   // 発動時のHUDフラッシュ表示
 }
 
 //======================================

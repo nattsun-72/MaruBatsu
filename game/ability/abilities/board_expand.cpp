@@ -7,8 +7,10 @@
  ****************************************/
 #include "board_expand.h"
 #include "ability/ability_registry.h"
+#include "config.h"
 
 #include <algorithm>
+#include <cstdio>
 
 //======================================
 // 構築
@@ -16,9 +18,14 @@
 BoardExpandAbility::BoardExpandAbility()
 {
     name        = "盤面拡張";
-    description = "盤面が3×3から\n4×4に広がる";
     rarity      = Rarity::Epic;
     unique      = true;   // 2個目を取得しても盤面サイズは変わらないため一度限り
+    targetWidth  = Config::GetInt("abilities.boardExpand.width",  4);
+    targetHeight = Config::GetInt("abilities.boardExpand.height", 4);
+
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "盤面が\n%d×%dに広がる", targetWidth, targetHeight);
+    description = buf;
 }
 
 //======================================

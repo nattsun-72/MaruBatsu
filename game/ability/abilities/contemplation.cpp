@@ -6,15 +6,23 @@
  ****************************************/
 #include "contemplation.h"
 #include "ability/ability_registry.h"
+#include "config.h"
+
+#include <cstdio>
 
 //======================================
 // 構築
 //======================================
 ContemplationAbility::ContemplationAbility()
 {
-    name        = "熟考";
-    description = "毎ターン思考時間\n+30秒 (恒久)";
-    rarity      = Rarity::Common;
+    name         = "熟考";
+    rarity       = Rarity::Common;
+    bonusSeconds = Config::GetDouble("abilities.contemplation.bonusSeconds", 30.0);
+
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "毎ターン思考時間\n+%d秒 (恒久)",
+                  static_cast<int>(bonusSeconds));
+    description = buf;
 }
 
 //======================================

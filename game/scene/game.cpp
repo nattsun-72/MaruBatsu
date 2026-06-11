@@ -21,12 +21,15 @@
 #include "text_draw.h"
 
 #include "ability/ability_registry.h"
+#include "ability/abilities/boss_engraved.h"
+#include "ability/abilities/boss_gravity.h"
 #include "ability/abilities/boss_ice_slide.h"
 #include "ability/abilities/boss_spiral_rotate.h"
 #include "boss/boss.h"
 #include "boss/boss_roster.h"
 
 #include "run_state.h"
+#include "config.h"
 
 #include "scene.h"
 #include "direct3d.h"
@@ -63,14 +66,10 @@ namespace
     constexpr float TEXT_SIZE_HINT = 18.0f;   // 補助文字
 
     //--------------------------------------
-    // AI遅延 (即時行動だと視認性が悪いため)
+    // AI遅延・効果アニメ (設定ファイル駆動。ResetMatch で読み込む)
     //--------------------------------------
-    constexpr double AI_DELAY = 0.35;
-
-    //--------------------------------------
-    // 効果アニメーション
-    //--------------------------------------
-    constexpr double PHASE_DURATION = 0.18;  // 1効果フェーズの再生時間(秒)
+    double g_AiDelay       = 0.35;   // AIが着手するまでの間(秒)
+    double g_PhaseDuration = 0.18;   // 1効果フェーズの再生時間(秒)
 
     //--------------------------------------
     // 方向インジケータ (シェブロン矢印)
@@ -127,6 +126,7 @@ namespace
     const DirectX::XMFLOAT4 COLOR_SLIDE_ARROW { 0.55f, 0.85f, 1.00f, 1.0f };  // 滑り方向矢印
     const DirectX::XMFLOAT4 COLOR_ROTATE_ARROW{ 0.82f, 0.55f, 1.00f, 1.0f };  // 回転方向矢印(紫)
     const DirectX::XMFLOAT4 COLOR_CHAIN_PULSE { 1.00f, 0.55f, 0.30f, 1.0f };  // 連鎖パルス線(橙赤)
+    const DirectX::XMFLOAT4 COLOR_GRAVITY_ARROW{ 0.80f, 0.85f, 0.95f, 1.0f }; // 重力矢印(鋼)
     const DirectX::XMFLOAT4 COLOR_BTN_BG      { 0.12f, 0.13f, 0.20f, 0.96f };  // ボタン本体
     const DirectX::XMFLOAT4 COLOR_BTN_HOVER   { 0.24f, 0.28f, 0.40f, 0.98f };  // ボタン (ホバー)
 
@@ -142,6 +142,14 @@ namespace
     std::vector<std::shared_ptr<Ability>>       g_BossAbilities; // ボス側アビリティ
     std::shared_ptr<BossIceSlideAbility>        g_IceSlideRef;   // 方向インジケータ用 (氷盤参照)
     std::shared_ptr<BossSpiralRotateAbility>    g_SpiralRef;     // 回転インジケータ用 (螺旋盤参照)
+    std::shared_ptr<BossGravityAbility>         g_GravityRef;    // 重力インジケータ用 (重力場参照)
+    std::shared_ptr<BossEngravedAbility>        g_EngravedRef;   // モード表示用 (刻まれし力参照)
+
+    //--------------------------------------
+    // 不死(敗北打ち消し)の演出
+    //--------------------------------------
+    double g_ImmortalFlash = 0.0;              // 「不死発動」バナーの残り表示時間
+    constexpr double IMMORTAL_FLASH_DURATION = 1.4;   // バナー表示時間(秒)
 
     //--------------------------------------
     // 直近着手の演出
@@ -168,7 +176,8 @@ namespace
     double g_AnimPhaseTimer = 0.0;  // 現フェーズの残り時間
 
     double g_AnimClock  = 0.0;  // 演出用クロック (シェブロンの脈動)
-    double g_TimerFlash = 0.0;  // 思考時間加算フラッシュ演出の残り時間
+    double g_TimerFlash = 0.0;  // アビリティ発動フラッシュ演出の残り時間
+    std::string g_FlashText;    // 発動フラッシュに表示する文言 (アビリティ毎)
 
     //--------------------------------------
     // アビリティ履歴ポップアップの状態
@@ -342,10 +351,16 @@ namespace
         return false;
     }
 
+    // 前方宣言 (任意発動が盤面を書き換えた場合の後処理で使用)
+    void StartEffectAnimation(const Board& boardStart);
+    bool EvaluateBoardOutcome();
+
     /**
      * @brief  グループ内の発動可能なインスタンスを1つ発動する
      * @param  g 対象グループ
-     * @detail 取得順で最初に発動できたものを使用し、加算フラッシュを出す。
+     * @detail 取得順で最初に発動できたものを使用し、発動フラッシュを出す。
+     *         盤面を書き換える発動(螺旋の欠片等)は、効果アニメの再生と
+     *         勝敗の再評価まで行う。
      */
     void GroupActivate(const AbilityGroup& g)
     {
@@ -353,8 +368,20 @@ namespace
         {
             if (a->CanActivate(g_State))
             {
+                // 発動前の盤面を控え、効果フェーズの出力をクリアする
+                g_State.animPhases.clear();
+                const Board boardBefore = g_State.board;
+
                 a->Activate(g_State);
-                g_TimerFlash = TIMER_FLASH_DURATION;   // 加算フィードバック
+                g_FlashText  = a->flashText;           // 発動フィードバック文言
+                g_TimerFlash = TIMER_FLASH_DURATION;
+
+                // 盤面を書き換えた発動なら、アニメ再生と勝敗再評価を行う
+                if (!g_State.animPhases.empty())
+                {
+                    StartEffectAnimation(boardBefore);
+                    EvaluateBoardOutcome();
+                }
                 return;
             }
         }
@@ -413,7 +440,7 @@ namespace
         if (p == Piece::Enemy)
         {
             g_AiPending = true;
-            g_AiTimer   = AI_DELAY;
+            g_AiTimer   = g_AiDelay;
         }
         else
         {
@@ -434,6 +461,8 @@ namespace
         g_BossAbilities = g_Boss->GetBossAbilities();
         g_IceSlideRef.reset();
         g_SpiralRef.reset();
+        g_GravityRef.reset();
+        g_EngravedRef.reset();
 
         // プレイヤー側を先に登録 → OnPlace はプレイヤー効果が先に発火する。
         // (氷駒が「置いた直後の駒」を滑らせてから、氷盤が全体を滑らせる)
@@ -454,6 +483,14 @@ namespace
             {
                 g_SpiralRef = spiral;
             }
+            if (auto grav = std::dynamic_pointer_cast<BossGravityAbility>(a))
+            {
+                g_GravityRef = grav;
+            }
+            if (auto eng = std::dynamic_pointer_cast<BossEngravedAbility>(a))
+            {
+                g_EngravedRef = eng;
+            }
         }
     }
 
@@ -465,6 +502,10 @@ namespace
     void ResetMatch()
     {
         /*--- 盤面・対戦状態の初期化 ---*/
+        /*--- 設定値の読み込み (タイトルで再読込された値を反映) ---*/
+        g_AiDelay       = Config::GetDouble("rules.aiDelaySeconds",     0.35);
+        g_PhaseDuration = Config::GetDouble("rules.effectPhaseSeconds", 0.18);
+
         g_State = {};
         g_State.board.Reset();
         g_State.result = MatchResult::Playing;
@@ -483,6 +524,7 @@ namespace
         g_AnimPhaseTimer   = 0.0;
         g_AbilityPopupOpen = false;
         g_PopupScroll      = 0.0;
+        g_ImmortalFlash    = 0.0;
 
         /*--- ボス再ロード → 盤面サイズ確定 → 先手ターン開始 ---*/
         LoadBoss();
@@ -504,45 +546,78 @@ namespace
     // 着手後の判定
     //======================================
     /**
-     * @brief  駒を1個置いた直後の勝敗・ターン進行を評価する
-     * @param  justPlaced 直前に駒を置いた陣営
-     * @detail 勝利→引き分け→追加着手→ターン終了の順で判定する。
-     *         OnPlace は PlaceAndEvaluate 側で先に呼ぶため、ここでは扱わない。
-     *         勝利判定はボスギミック(氷盤スライド等)で盤面が動いた後の
-     *         最終盤面に対して行い、着手側だけでなく両陣営を確認する。
+     * @brief  現在の盤面に対して勝敗・引き分けを評価する
+     * @return 決着 or 敗北回避が起きたら true (ターン進行を打ち切るべき)
+     * @detail 着手後と任意発動の盤面変化後の双方から呼ばれる共通判定。
+     *         両陣営の勝利条件を確認し、双方同時成立時はプレイヤー優先。
+     *         敗北時は IDefeatHandler (不死等) に打ち消しの機会を与え、
+     *         打ち消された場合は盤面を再生して試合を続行する。
      */
-    void EvaluateAfterPlace(Piece justPlaced)
+    bool EvaluateBoardOutcome()
     {
-        // 1) 設置時イベント (アビリティ用フック)
-        // ※ EvaluateAfterPlace の前にOnPlaceを呼んでいるので、ここでは省略。
-        //    OnPlaceは PlaceAndEvaluate 側で先に呼ぶ。
-
-        // 2) 勝利判定
-        // ボスギミックで全駒が動くと、着手していない側の駒が揃うこともある。
-        // そのため着手側だけでなく両陣営の勝利条件を確認する。
+        /*--- 勝利判定 (ボスギミックで動いた後の最終盤面・両陣営) ---*/
         const bool playerWon = g_Registry.CheckWin(g_State.board, Piece::Player);
         const bool enemyWon  = g_Registry.CheckWin(g_State.board, Piece::Enemy);
         if (playerWon || enemyWon)
         {
+            // 敗北しそうな場合、敗北フック(不死等)に打ち消しの機会を与える
+            if (enemyWon && !playerWon && g_Registry.HandleDefeat(g_State, Piece::Player))
+            {
+                // 敗北回避: 盤面を再生し、進行中のアニメを破棄してバナー表示
+                g_State.board.Reset();
+                g_State.animPhases.clear();
+                g_AnimPhases.clear();
+                g_PhaseStartBoards.clear();
+                g_AnimPhaseIndex  = 0;
+                g_AnimPhaseTimer  = 0.0;
+                g_LastPlacedPos   = { -1, -1 };
+                g_LastPlacedTimer = 0.0;
+                g_ImmortalFlash   = IMMORTAL_FLASH_DURATION;
+                return true;   // 決着はしないが、通常のターン進行は打ち切る
+            }
+
             // 双方同時成立時はプレイヤーを優先 (理不尽な敗北を避ける)
             const Piece winner = playerWon ? Piece::Player : Piece::Enemy;
             g_State.winner = winner;
             g_State.result = (winner == Piece::Player)
                 ? MatchResult::Win : MatchResult::Lose;
-            return;
+            return true;
         }
 
-        // 3) 引き分け判定
+        /*--- 引き分け判定 ---*/
         if (g_State.board.IsFull())
         {
             g_State.result = MatchResult::Draw;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @brief  駒を1個置いた直後の勝敗・ターン進行を評価する
+     * @param  justPlaced 直前に駒を置いた陣営
+     * @detail 勝敗(EvaluateBoardOutcome)→追加着手→ターン終了の順で判定する。
+     *         OnPlace は PlaceAndEvaluate 側で先に呼ぶため、ここでは扱わない。
+     */
+    void EvaluateAfterPlace(Piece justPlaced)
+    {
+        // 1) 勝敗・引き分け・敗北回避の共通評価
+        if (EvaluateBoardOutcome())
+        {
+            // 敗北回避(盤面再生)で試合続行の場合は、相手の手番へ移す
+            if (g_State.result == MatchResult::Playing)
+            {
+                g_Registry.OnTurnEnd(g_State, justPlaced);
+                ++g_State.turnCount;
+                BeginTurn(Opponent(justPlaced));
+            }
             return;
         }
 
-        // 4) 同一プレイヤーの追加着手が残っているか
+        // 2) 同一プレイヤーの追加着手が残っているか
         if (g_State.placementsRemaining > 0) return;
 
-        // 5) ターン終了
+        // 3) ターン終了
         g_Registry.OnTurnEnd(g_State, justPlaced);
         ++g_State.turnCount;
         BeginTurn(Opponent(justPlaced));
@@ -585,7 +660,7 @@ namespace
             g_PhaseStartBoards.push_back(cur);
             ApplyPhase(cur, phase);
         }
-        g_AnimPhaseTimer = PHASE_DURATION;
+        g_AnimPhaseTimer = g_PhaseDuration;
     }
 
     /**
@@ -688,7 +763,7 @@ namespace
     /**
      * @brief  AIの手番を処理する
      * @param  dt 前フレームからの経過秒数
-     * @detail AI_DELAY 経過後に着手。追加着手が残れば再度AIを予約する。
+     * @detail g_AiDelay 経過後に着手。追加着手が残れば再度AIを予約する。
      */
     void HandleAiTurn(double dt)
     {
@@ -709,7 +784,7 @@ namespace
         if (g_State.placementsRemaining > 0 && g_State.result == MatchResult::Playing)
         {
             g_AiPending = true;
-            g_AiTimer   = AI_DELAY;
+            g_AiTimer   = g_AiDelay;
         }
     }
 
@@ -859,7 +934,7 @@ namespace
             const BoardOps::MoveList& phase    = g_AnimPhases[phaseIdx];
 
             // 進捗 0→1 (ease-out で滑らかに減速)
-            float raw = 1.0f - static_cast<float>(g_AnimPhaseTimer / PHASE_DURATION);
+            float raw = 1.0f - static_cast<float>(g_AnimPhaseTimer / g_PhaseDuration);
             raw = (raw < 0.0f) ? 0.0f : (raw > 1.0f ? 1.0f : raw);
             const float t = 1.0f - (1.0f - raw) * (1.0f - raw);
 
@@ -931,16 +1006,13 @@ namespace
     }
 
     /**
-     * @brief  氷盤が次に滑る方向を、辺に沿ったシェブロン矢印で可視化する
-     * @detail 氷盤ボスが存在しプレイ中のときのみ描画。矢印は滑る方向へ
-     *         流れる脈動アニメーションを伴う。
+     * @brief  スライド方向を、辺に沿ったシェブロン矢印で可視化する
+     * @param  d 滑走方向
+     * @detail 氷盤ギミック(氷盤ボス/刻まれし者の氷盤モード)で使用。
+     *         矢印は滑る方向へ流れる脈動アニメーションを伴う。
      */
-    void DrawDirectionIndicator()
+    void DrawDirChevrons(Direction d)
     {
-        if (!g_IceSlideRef) return;
-        if (g_State.result != MatchResult::Playing) return;
-
-        const Direction d  = g_IceSlideRef->currentDir;
         const float     ox = BoardOriginX();
         const float     oy = BoardOriginY();
         const bool horizontalSlide = (d == Direction::Left || d == Direction::Right);
@@ -978,19 +1050,16 @@ namespace
     }
 
     /**
-     * @brief  螺旋盤が回転する向きを、盤の四辺を巡る循環シェブロンで可視化する
-     * @detail 螺旋盤ボスが存在しプレイ中のときのみ描画。各辺のシェブロンを
-     *         循環方向に向け、脈動を循環順に走らせて回転方向を提示する。
+     * @brief  盤面の回転方向を、四辺を巡る循環シェブロンで可視化する
+     * @param  cw 回転方向 (true=時計回り)
+     * @detail 螺旋ギミック(螺旋盤ボス/刻まれし者の螺旋モード)で使用。
+     *         脈動を循環順に走らせて回転方向を提示する。
      */
-    void DrawRotationIndicator()
+    void DrawRotChevrons(bool cw)
     {
-        if (!g_SpiralRef) return;
-        if (g_State.result != MatchResult::Playing) return;
-
         const float ox   = BoardOriginX();
         const float oy   = BoardOriginY();
         const float half = BOARD_SIZE * 0.5f;
-        const bool  cw   = g_SpiralRef->clockwise;
 
         // 四辺のシェブロンを「循環順」に並べる。各辺は循環方向を指す。
         struct Spot { float cx, cy; Direction dir; };
@@ -1026,6 +1095,120 @@ namespace
     }
 
     /**
+     * @brief  重力(下方向への落下)を、左右の辺の下向きシェブロンで可視化する
+     * @detail 重力ギミック(重力場ボス/刻まれし者の重力モード)で使用。
+     *         脈動が下へ流れ、駒が底へ吸われることを提示する。
+     */
+    void DrawGravityChevrons()
+    {
+        const float ox = BoardOriginX();
+        const float oy = BoardOriginY();
+
+        for (int i = 0; i < CHEVRON_COUNT; ++i)
+        {
+            const float frac  = (i + 1.0f) / (CHEVRON_COUNT + 1.0f);
+            const float cy    = oy + BOARD_SIZE * frac;
+
+            // 下へ流れる脈動 (上の矢印ほど先に光る)
+            const float wave = 0.5f + 0.5f * std::sin(
+                static_cast<float>(g_AnimClock) * 5.0f - i * 0.9f);
+            DirectX::XMFLOAT4 col = COLOR_GRAVITY_ARROW;
+            col.w = 0.30f + 0.60f * wave;
+
+            // 左右両辺に下向きシェブロンを描く
+            DrawChevron(ox - CHEVRON_MARGIN,              cy, Direction::Down,
+                        CHEVRON_SIZE, CHEVRON_THICKNESS, col);
+            DrawChevron(ox + BOARD_SIZE + CHEVRON_MARGIN, cy, Direction::Down,
+                        CHEVRON_SIZE, CHEVRON_THICKNESS, col);
+        }
+    }
+
+    /**
+     * @brief  連鎖(隣接拡張)を、盤の四隅で脈動するダイヤ形で可視化する
+     * @detail 連鎖ギミック(刻まれし者の連鎖モード等)で使用。
+     *         鼓動のような点滅で「増殖する圧」を提示する。
+     */
+    void DrawChainCorners()
+    {
+        const float ox = BoardOriginX();
+        const float oy = BoardOriginY();
+        const float m  = CHEVRON_MARGIN;
+
+        const float corners[4][2] = {
+            { ox - m,              oy - m },
+            { ox + BOARD_SIZE + m, oy - m },
+            { ox - m,              oy + BOARD_SIZE + m },
+            { ox + BOARD_SIZE + m, oy + BOARD_SIZE + m },
+        };
+
+        // 鼓動風の脈動 (全隅が同位相で強く明滅する)
+        const float beat = 0.5f + 0.5f * std::sin(static_cast<float>(g_AnimClock) * 6.0f);
+        DirectX::XMFLOAT4 col = COLOR_CHAIN_PULSE;
+        col.w = 0.25f + 0.65f * beat;
+        const float r = CHEVRON_SIZE * (0.7f + 0.3f * beat);
+
+        for (const auto& c : corners)
+        {
+            // 4本の線でダイヤ(◇)を描く
+            Prim::DrawLine(c[0],     c[1] - r, c[0] + r, c[1],     CHEVRON_THICKNESS * 0.7f, col);
+            Prim::DrawLine(c[0] + r, c[1],     c[0],     c[1] + r, CHEVRON_THICKNESS * 0.7f, col);
+            Prim::DrawLine(c[0],     c[1] + r, c[0] - r, c[1],     CHEVRON_THICKNESS * 0.7f, col);
+            Prim::DrawLine(c[0] - r, c[1],     c[0],     c[1] - r, CHEVRON_THICKNESS * 0.7f, col);
+        }
+    }
+
+    /**
+     * @brief  不死(敗北打ち消し)発動時のバナーと画面フラッシュを描画する
+     * @detail 盤面再生の瞬間が分かるよう、白フラッシュ＋中央バナーで提示する。
+     */
+    void DrawImmortalBanner()
+    {
+        if (g_ImmortalFlash <= 0.0) return;
+
+        const float screenW = static_cast<float>(Direct3D_GetBackBufferWidth());
+        const float screenH = static_cast<float>(Direct3D_GetBackBufferHeight());
+        const float k = static_cast<float>(g_ImmortalFlash / IMMORTAL_FLASH_DURATION); // 1→0
+
+        // 画面全体の白フラッシュ (発動直後が最も強い)
+        Prim::DrawRect(0, 0, screenW, screenH, { 1.0f, 1.0f, 1.0f, 0.35f * k });
+
+        // 中央バナー
+        const char* msg = "不死発動 — 盤面が再生した";
+        const float w = Text::MeasureWidth(msg, TEXT_SIZE_BIG * 0.7f);
+        DirectX::XMFLOAT4 col = COLOR_TEXT_WIN;
+        col.w = (k > 0.8f) ? 1.0f : (k / 0.8f);   // 終盤はフェードアウト
+        Text::Draw((screenW - w) * 0.5f, screenH * 0.30f,
+                   msg, TEXT_SIZE_BIG * 0.7f, col);
+    }
+
+    /**
+     * @brief  現在のボスギミックに応じた視覚的補助をまとめて描画する
+     * @detail 規約「盤面が動く効果には視覚的補助を必ず入れる」の集約点。
+     *         固定ギミックのボスは対応する参照から、刻まれし者は
+     *         現在モードに応じて切り替えて描画する。
+     */
+    void DrawGimmickIndicators()
+    {
+        if (g_State.result != MatchResult::Playing) return;
+
+        if (g_IceSlideRef) DrawDirChevrons(g_IceSlideRef->currentDir);
+        if (g_SpiralRef)   DrawRotChevrons(g_SpiralRef->clockwise);
+        if (g_GravityRef)  DrawGravityChevrons();
+
+        if (g_EngravedRef)
+        {
+            // 刻まれし者: 現在振るっている力のインジケータを表示
+            switch (g_EngravedRef->mode)
+            {
+            case EngravedMode::Ice:     DrawDirChevrons(g_EngravedRef->currentDir); break;
+            case EngravedMode::Spiral:  DrawRotChevrons(g_EngravedRef->clockwise);  break;
+            case EngravedMode::Chain:   DrawChainCorners();                          break;
+            case EngravedMode::Gravity: DrawGravityChevrons();                       break;
+            }
+        }
+    }
+
+    /**
      * @brief  HUD (残時間・手番・ボス名・所持アビリティ) を描画する
      */
     void DrawHud()
@@ -1046,15 +1229,15 @@ namespace
         if (g_TimerFlash > 0.0) timeColor = COLOR_TEXT_WIN;  // 時間加算フラッシュ
         Text::Draw(24.0f, 24.0f, buf, TEXT_SIZE_HUD, timeColor);
 
-        /*--- 集中などで加算した直後の「+2:00」浮き上がり表示 ---*/
-        if (g_TimerFlash > 0.0)
+        /*--- アビリティ発動直後の浮き上がりフラッシュ表示 ---*/
+        if (g_TimerFlash > 0.0 && !g_FlashText.empty())
         {
             const float k = static_cast<float>(g_TimerFlash / TIMER_FLASH_DURATION); // 1→0
             DirectX::XMFLOAT4 popColor = COLOR_TEXT_WIN;
             popColor.w = k;
             const float popY = 24.0f - (1.0f - k) * 22.0f;
             Text::Draw(24.0f + Text::MeasureWidth(buf, TEXT_SIZE_HUD) + 14.0f,
-                       popY, "+2:00", TEXT_SIZE_HINT, popColor);
+                       popY, g_FlashText.c_str(), TEXT_SIZE_HINT, popColor);
         }
 
         /*--- 現在の手番表示 (右上) ---*/
@@ -1083,8 +1266,20 @@ namespace
                 Text::Draw((screenW - flavorW) * 0.5f, 24.0f + TEXT_SIZE_HUD + 4.0f,
                            g_Boss->description.c_str(), TEXT_SIZE_HINT, COLOR_TEXT_HINT);
             }
+
+            // 刻まれし者: 現在振るっている力の名前を提示 (毎ターン変わるため)
+            if (g_EngravedRef && g_State.result == MatchResult::Playing)
+            {
+                char modeBuf[64];
+                std::snprintf(modeBuf, sizeof(modeBuf), "今の力：%s",
+                              g_EngravedRef->ModeName());
+                const float modeW = Text::MeasureWidth(modeBuf, TEXT_SIZE_HINT);
+                Text::Draw((screenW - modeW) * 0.5f,
+                           24.0f + TEXT_SIZE_HUD + 4.0f + TEXT_SIZE_HINT + 4.0f,
+                           modeBuf, TEXT_SIZE_HINT, COLOR_TEXT_URGENT);
+            }
         }
-        // 盤面ギミックの方向は Draw(Direction/Rotation)Indicator のシェブロンで可視化
+        // 盤面ギミックの方向/回転/重力/連鎖は DrawGimmickIndicators で可視化
 
         /*--- 所持アビリティ (画面左下) ---*/
         // 5グループまで表示し、超過分は「……」行から履歴ポップアップへ。
@@ -1553,7 +1748,8 @@ void Game_Finalize()
 void Game_Update(double elapsed_time)
 {
     g_AnimClock += elapsed_time;  // シェブロン脈動用クロック
-    if (g_TimerFlash > 0.0) g_TimerFlash -= elapsed_time;
+    if (g_TimerFlash    > 0.0) g_TimerFlash    -= elapsed_time;
+    if (g_ImmortalFlash > 0.0) g_ImmortalFlash -= elapsed_time;
 
     // マウスホイールの変化量を算出 (履歴ポップアップのスクロールに使用)
     {
@@ -1584,7 +1780,7 @@ void Game_Update(double elapsed_time)
         if (g_AnimPhaseTimer <= 0.0)
         {
             ++g_AnimPhaseIndex;  // 次フェーズへ
-            if (IsEffectAnimating()) g_AnimPhaseTimer = PHASE_DURATION;
+            if (IsEffectAnimating()) g_AnimPhaseTimer = g_PhaseDuration;
         }
         if (g_LastPlacedTimer > 0.0)
         {
@@ -1633,7 +1829,8 @@ void Game_Update(double elapsed_time)
         switch (go.action)
         {
         case GameOverAction::Reward:
-            // 通常ボス撃破: ボス番号を進めて報酬画面へ
+            // 通常ボス撃破: 固有報酬を予約し、ボス番号を進めて報酬画面へ
+            if (g_Boss) RunState::SetPendingBossReward(g_Boss->GetRewardAbility());
             RunState::IncrementBoss();
             RunState::GenerateRewardChoices();
             Scene_Change(Scene::REWARD);
@@ -1674,8 +1871,8 @@ void Game_Draw()
     }
 
     DrawBoardAndPieces();     // 盤面と駒
-    DrawDirectionIndicator(); // 氷盤の滑り方向矢印
-    DrawRotationIndicator();  // 螺旋盤の回転方向シェブロン
+    DrawGimmickIndicators();  // ボスギミックの視覚的補助 (方向/回転/重力/連鎖)
+    DrawImmortalBanner();     // 不死発動 (敗北打ち消し) のバナー
     DrawHud();                // HUD (残時間/手番/アビリティ)
     DrawAbilityPopup();       // アビリティ履歴ポップアップ
     DrawGameOverOverlay();    // ゲームオーバー時のオーバーレイ

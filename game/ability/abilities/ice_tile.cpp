@@ -27,6 +27,9 @@ void IceTileAbility::OnPlace(GameState& state, Vec2 pos, Piece placedBy)
 {
     if (placedBy != ownerSide) return;   // 自分の駒以外は対象外
 
+    // 重駒所持時: 自駒はあらゆる滑りの対象外 (氷駒の自滑走も含む)
+    if (state.slideAnchorSide == ownerSide) return;
+
     /*--- 重ね掛け対応: 駒の現在位置を特定する ---*/
     // 氷駒を複数所持していると、本ハンドラは所持数だけ OnPlace される。
     // 先行コピーで既に滑った後は設置マス pos が空になっているため、

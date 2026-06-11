@@ -7,7 +7,9 @@
 #include "run_state.h"
 #include "ability/ability_pool.h"
 #include "boss/boss_roster.h"
+#include "config.h"
 
+#include <algorithm>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
@@ -26,6 +28,9 @@ namespace
     double g_RunTime    = 0.0;      // ランの累積プレイ時間(秒)
     int    g_RunTurns   = 0;        // ランの累積ターン数
     RunResult g_LastResult;         // 直近に確定した戦績(リザルト画面用)
+
+    // 直前に撃破したボスの固有報酬 (次の報酬候補へ1枠確保される)
+    std::shared_ptr<Ability> g_PendingBossReward;
 
     // セーブ/履歴ファイル (実行ディレクトリ相対、BOMなしUTF-8テキスト)
     const char* SAVE_DIR     = "save";
@@ -110,6 +115,7 @@ namespace RunState
         // 所持アビリティ・報酬候補・ボス進行・クリア表示・統計をすべて初期化
         g_PlayerAbilities.clear();
         g_RewardChoices.clear();
+        g_PendingBossReward.reset();
         g_BossIndex   = 0;
         g_RunCleared  = false;
         g_RunTime     = 0.0;
@@ -191,16 +197,46 @@ namespace RunState
         return recent;
     }
 
+    void SetPendingBossReward(std::shared_ptr<Ability> reward)
+    {
+        g_PendingBossReward = std::move(reward);
+    }
+
     void GenerateRewardChoices()
     {
+        const int choiceCount = Config::GetInt("rules.rewardChoiceCount", 3);
+
         // 取得済みの「一度限り」アビリティ名を集め、抽選候補から除外する
         std::vector<std::string> excludeNames;
         for (const auto& a : g_PlayerAbilities)
         {
             if (a->unique) excludeNames.push_back(a->name);
         }
-        // アビリティプールから3つをランダム抽選して報酬候補とする
-        g_RewardChoices = AbilityPool::PickRandom(3, excludeNames);
+
+        g_RewardChoices.clear();
+
+        /*--- 撃破ボスの固有報酬を1枠目に確保する ---*/
+        // 一度限りで所持済みの場合は確保せず、通常抽選にフォールバック。
+        if (g_PendingBossReward)
+        {
+            const bool excluded =
+                std::find(excludeNames.begin(), excludeNames.end(),
+                          g_PendingBossReward->name) != excludeNames.end();
+            if (!excluded)
+            {
+                g_RewardChoices.push_back(g_PendingBossReward);
+                excludeNames.push_back(g_PendingBossReward->name);  // 残枠との重複防止
+            }
+            g_PendingBossReward.reset();
+        }
+
+        /*--- 残り枠をレアリティ重み付き抽選で埋める ---*/
+        const int remain = choiceCount - static_cast<int>(g_RewardChoices.size());
+        if (remain > 0)
+        {
+            auto picked = AbilityPool::PickRandom(remain, excludeNames);
+            for (auto& a : picked) g_RewardChoices.push_back(std::move(a));
+        }
     }
 
     //======================================
@@ -274,6 +310,7 @@ namespace RunState
         g_RunTurns        = runTurns;
         g_PlayerAbilities = std::move(loaded);
         g_RewardChoices.clear();
+        g_PendingBossReward.reset();
         g_RunCleared      = false;
         return true;
     }

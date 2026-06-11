@@ -130,8 +130,35 @@
     <ClCompile Include="game\ability\abilities\board_expand.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
+    <ClCompile Include="game\ability\abilities\boss_engraved.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\boss_gravity.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\chain_shard.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\diagonal_void.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\heavy_piece.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\immortal.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\l_win.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
     <ClCompile Include="game\ability\abilities\margin.cpp">
       <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\spiral_shard.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\config.cpp">
+      <Filter>game</Filter>
     </ClCompile>
     <ClCompile Include="game\ability\abilities\two_hands.cpp">
       <Filter>game\ability\abilities</Filter>
@@ -306,8 +333,35 @@
     <ClInclude Include="game\ability\abilities\board_expand.h">
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
+    <ClInclude Include="game\ability\abilities\boss_engraved.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\boss_gravity.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\chain_shard.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\diagonal_void.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\heavy_piece.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\immortal.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\l_win.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
     <ClInclude Include="game\ability\abilities\margin.h">
       <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\spiral_shard.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\config.h">
+      <Filter>game</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\two_hands.h">
       <Filter>game\ability\abilities</Filter>

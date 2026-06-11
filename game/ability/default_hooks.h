@@ -10,6 +10,7 @@
 #define DEFAULT_HOOKS_H
 
 #include "hooks.h"
+#include "config.h"
 
 //======================================
 // 標準勝利条件
@@ -51,7 +52,8 @@ public:
 class DefaultTurnTimeProvider : public ITurnTimeProvider
 {
 public:
-    double seconds = 180.0;  // ターン制限時間(秒)
+    // ターン制限時間(秒)。設定ファイルから読み込む。
+    double seconds = Config::GetDouble("rules.turnTimeSeconds", 180.0);
     double GetTurnTimeSeconds(Piece /*player*/) override { return seconds; }
 };
 
@@ -65,8 +67,9 @@ public:
 class DefaultBoardModifier : public IBoardModifier
 {
 public:
-    int width  = 3;  // 既定の横マス数
-    int height = 3;  // 既定の縦マス数
+    // 既定の盤面サイズ。設定ファイルから読み込む。
+    int width  = Config::GetInt("rules.boardCols", 3);
+    int height = Config::GetInt("rules.boardRows", 3);
     void GetBoardSize(int& w, int& h) override { w = width; h = height; }
 };
 

@@ -6,7 +6,7 @@
  ****************************************/
 #include "spiral_queen_boss.h"
 #include "ability/abilities/boss_spiral_rotate.h"
-#include "ability/abilities/contemplation.h"
+#include "ability/abilities/spiral_shard.h"
 
 //======================================
 // 構築
@@ -31,6 +31,6 @@ std::vector<std::shared_ptr<Ability>> SpiralQueenBoss::GetBossAbilities()
 
 std::shared_ptr<Ability> SpiralQueenBoss::GetRewardAbility()
 {
-    // 暫定報酬。実際の報酬画面はプール抽選のため現状この戻り値は未使用。
-    return std::make_shared<ContemplationAbility>();
+    // 撃破報酬: 任意発動の盤面回転に弱化した「螺旋の欠片」
+    return std::make_shared<SpiralShardAbility>();
 }

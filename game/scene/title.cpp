@@ -38,9 +38,11 @@ namespace
     const DirectX::XMFLOAT4 COLOR_BTN_EDGE { 0.55f, 0.85f, 1.00f, 1.0f };  // ボタン縁取り
 
     // メニューボタンの寸法
-    constexpr float BTN_W   = 260.0f;
-    constexpr float BTN_H   = 56.0f;
-    constexpr float BTN_GAP = 40.0f;
+    constexpr float BTN_W    = 260.0f;
+    constexpr float BTN_H    = 56.0f;
+    constexpr float BTN_GAP  = 40.0f;
+    constexpr float HBTN_W   = 200.0f;   // 戦績ボタン
+    constexpr float HBTN_H   = 44.0f;
 
     double g_BlinkTimer = 0.0;   // 開始プロンプト点滅用の経過時間
 
@@ -63,6 +65,11 @@ namespace
         const float totalW = BTN_W * 2.0f + BTN_GAP;
         const float x0 = (screenW - totalW) * 0.5f;
         return { x0 + BTN_W + BTN_GAP, screenH * 0.66f, BTN_W, BTN_H };
+    }
+    /** @brief 「戦績」ボタン領域 (画面下部中央。常時表示) */
+    Btn HistoryBtn(float screenW, float screenH)
+    {
+        return { (screenW - HBTN_W) * 0.5f, screenH * 0.85f, HBTN_W, HBTN_H };
     }
     /** @brief 座標がボタン領域内か */
     bool BtnContains(const Btn& b, int mx, int my)
@@ -113,6 +120,14 @@ void Title_Update(double elapsed_time)
     const float screenW = static_cast<float>(Direct3D_GetBackBufferWidth());
     const float screenH = static_cast<float>(Direct3D_GetBackBufferHeight());
     const auto& mouse   = InputManager_GetMouseState();
+
+    // 「戦績」ボタンのクリックを最優先で処理 (開始入力に吸われないよう先に消費)
+    if (InputManager_IsMouseLeftTrigger()
+     && BtnContains(HistoryBtn(screenW, screenH), mouse.x, mouse.y))
+    {
+        Scene_Change(Scene::HISTORY);
+        return;
+    }
 
     if (RunState::HasSave())
     {
@@ -209,5 +224,12 @@ void Title_Draw()
             Text::Draw((screenW - hintW) * 0.5f, screenH * 0.72f,
                        hint, TEXT_HINT_SIZE, COLOR_HINT);
         }
+    }
+
+    /*--- 「戦績」ボタン (常時表示) ---*/
+    {
+        const Btn h = HistoryBtn(screenW, screenH);
+        const auto& mouse = InputManager_GetMouseState();
+        DrawBtn(h, "戦績", BtnContains(h, mouse.x, mouse.y));
     }
 }

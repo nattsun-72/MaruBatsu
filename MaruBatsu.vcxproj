@@ -229,6 +229,7 @@
     <ClCompile Include="game\font_atlas.cpp" />
     <ClCompile Include="game\render_primitives.cpp" />
     <ClCompile Include="game\run_state.cpp" />
+    <ClCompile Include="game\scene\history.cpp" />
     <ClCompile Include="game\scene\result.cpp" />
     <ClCompile Include="game\scene\reward.cpp" />
     <ClCompile Include="game\text_draw.cpp" />
@@ -289,6 +290,7 @@
     <ClInclude Include="game\piece.h" />
     <ClInclude Include="game\render_primitives.h" />
     <ClInclude Include="game\run_state.h" />
+    <ClInclude Include="game\scene\history.h" />
     <ClInclude Include="game\scene\result.h" />
     <ClInclude Include="game\scene\reward.h" />
     <ClInclude Include="game\text_draw.h" />

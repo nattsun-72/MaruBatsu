@@ -27,9 +27,10 @@ namespace
     int    g_RunTurns   = 0;        // ランの累積ターン数
     RunResult g_LastResult;         // 直近に確定した戦績(リザルト画面用)
 
-    // セーブファイル (実行ディレクトリ相対、BOMなしUTF-8テキスト)
-    const char* SAVE_DIR  = "save";
-    const char* SAVE_PATH = "save/run.sav";
+    // セーブ/履歴ファイル (実行ディレクトリ相対、BOMなしUTF-8テキスト)
+    const char* SAVE_DIR     = "save";
+    const char* SAVE_PATH    = "save/run.sav";
+    const char* HISTORY_PATH = "save/history.tsv";   // 戦績履歴(1行1ラン、TAB区切り)
 
     /** @brief 現在のローカル日時を "YYYY/MM/DD HH:MM" 形式で返す */
     std::string NowString()
@@ -40,6 +41,47 @@ namespace
         char buf[32] = {};
         std::strftime(buf, sizeof(buf), "%Y/%m/%d %H:%M", &tm);
         return std::string(buf);
+    }
+
+    /** @brief 文字列を区切り文字 sep で分割する */
+    std::vector<std::string> Split(const std::string& s, char sep)
+    {
+        std::vector<std::string> out;
+        std::string cur;
+        for (char c : s)
+        {
+            if (c == sep) { out.push_back(cur); cur.clear(); }
+            else          { cur.push_back(c); }
+        }
+        out.push_back(cur);
+        return out;
+    }
+
+    /** @brief g_LastResult を履歴ファイルへ1行追記する (ラン終了時に呼ぶ) */
+    void AppendHistory(const RunResult& r)
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(SAVE_DIR, ec);
+
+        std::ofstream ofs(HISTORY_PATH, std::ios::binary | std::ios::app);
+        if (!ofs) return;
+
+        // 取得アビリティ名はカンマ連結 (名前にTAB/カンマは含まれない)
+        std::string abil;
+        for (size_t i = 0; i < r.abilityNames.size(); ++i)
+        {
+            if (i) abil += ",";
+            abil += r.abilityNames[i];
+        }
+        // TAB区切り: 日時 \t cleared \t 撃破 \t 総数 \t 秒 \t ターン \t 敗北ボス \t アビリティ
+        ofs << r.dateTime               << "\t"
+            << (r.cleared ? 1 : 0)      << "\t"
+            << r.bossesDefeated         << "\t"
+            << r.bossTotal              << "\t"
+            << static_cast<long long>(r.timeSeconds) << "\t"
+            << r.turns                  << "\t"
+            << r.defeatedByBoss         << "\t"
+            << abil                     << "\n";
     }
 }
 
@@ -98,9 +140,56 @@ namespace RunState
         {
             g_LastResult.abilityNames.push_back(a->name);
         }
+
+        // 確定した戦績を履歴へ追記 (ラン終了の単一地点)
+        AppendHistory(g_LastResult);
     }
 
     const RunResult& LastResult() { return g_LastResult; }
+
+    std::vector<RunResult> LoadHistory()
+    {
+        std::vector<RunResult> all;
+
+        std::ifstream ifs(HISTORY_PATH, std::ios::binary);
+        if (!ifs) return all;   // 履歴なし
+
+        std::string line;
+        while (std::getline(ifs, line))
+        {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (line.empty()) continue;
+
+            const auto f = Split(line, '\t');
+            if (f.size() < 8) continue;   // 不正行はスキップ
+
+            RunResult r;
+            try
+            {
+                r.cleared        = (std::stoi(f[1]) != 0);
+                r.bossesDefeated = std::stoi(f[2]);
+                r.bossTotal      = std::stoi(f[3]);
+                r.timeSeconds    = static_cast<double>(std::stoll(f[4]));
+                r.turns          = std::stoi(f[5]);
+            }
+            catch (...) { continue; }     // 数値破損行はスキップ
+            r.dateTime       = f[0];
+            r.defeatedByBoss = f[6];
+            if (!f[7].empty()) r.abilityNames = Split(f[7], ',');
+
+            all.push_back(std::move(r));
+        }
+
+        // 新しい順に並べ替え、最大100件に制限
+        std::vector<RunResult> recent;
+        const size_t maxKeep = 100;
+        for (size_t i = all.size(); i-- > 0; )
+        {
+            recent.push_back(all[i]);
+            if (recent.size() >= maxKeep) break;
+        }
+        return recent;
+    }
 
     void GenerateRewardChoices()
     {

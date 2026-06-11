@@ -11,6 +11,7 @@
 #include "title.h"
 #include "reward.h"
 #include "result.h"
+#include "history.h"
 
 #include "input_manager.h"
 #include "direct3d.h"
@@ -35,6 +36,7 @@ void Scene_Initialize()
     case Scene::GAME:   Game_Initialize();   break;
     case Scene::REWARD: Reward_Initialize(); break;
     case Scene::RESULT: Result_Initialize(); break;
+    case Scene::HISTORY: History_Initialize(); break;
     default: break;
     }
 }
@@ -48,6 +50,7 @@ void Scene_Finalize()
     case Scene::GAME:   Game_Finalize();   break;
     case Scene::REWARD: Reward_Finalize(); break;
     case Scene::RESULT: Result_Finalize(); break;
+    case Scene::HISTORY: History_Finalize(); break;
     default: break;
     }
 }
@@ -66,6 +69,7 @@ void Scene_Update(double elapsed_time)
     case Scene::GAME:   Game_Update(elapsed_time);   break;
     case Scene::REWARD: Reward_Update(elapsed_time); break;
     case Scene::RESULT: Result_Update(elapsed_time); break;
+    case Scene::HISTORY: History_Update(elapsed_time); break;
     default: break;
     }
 }
@@ -89,6 +93,7 @@ void Scene_Draw()
     case Scene::GAME:   Game_Draw();   break;
     case Scene::REWARD: Reward_Draw(); break;
     case Scene::RESULT: Result_Draw(); break;
+    case Scene::HISTORY: History_Draw(); break;
     default: break;
     }
 }

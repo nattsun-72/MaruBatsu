@@ -7,16 +7,23 @@
 #include "corner_dominion.h"
 #include "ability/ability_registry.h"
 #include "board.h"
+#include "config.h"
+
+#include <cstdio>
 
 //======================================
 // 構築
 //======================================
 CornerDominionAbility::CornerDominionAbility()
 {
-    name        = "四隅の覇";
-    description = "盤面の4隅すべての\n支配でも勝利";
-    rarity      = Rarity::Epic;
-    unique      = true;   // 勝利条件の追加は1つで完結するため一度限り
+    name            = "隅取り";
+    rarity          = Rarity::Epic;
+    unique          = true;   // 勝利条件の追加は1つで完結するため一度限り
+    cornerThreshold = Config::GetInt("abilities.cornerDominion.threshold", 3);
+
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "隅を%d箇所 支配\nしても勝利", cornerThreshold);
+    description = buf;
 }
 
 //======================================
@@ -30,13 +37,21 @@ bool CornerDominionAbility::Check(const Board& board, Piece player)
     // 2) 対象陣営でなければ追加条件は適用しない
     if (player != targetSide) return false;
 
-    // 3) 4隅すべてを自駒で支配していれば勝利
+    // 3) 4隅のうち自駒で支配している数が しきい値以上 なら勝利
     const int x1 = board.width  - 1;
     const int y1 = board.height - 1;
-    return board.Get(0,  0)  == player
-        && board.Get(x1, 0)  == player
-        && board.Get(0,  y1) == player
-        && board.Get(x1, y1) == player;
+    const Piece corners[4] = {
+        board.Get(0,  0),
+        board.Get(x1, 0),
+        board.Get(0,  y1),
+        board.Get(x1, y1),
+    };
+    int count = 0;
+    for (Piece c : corners)
+    {
+        if (c == player) ++count;
+    }
+    return count >= cornerThreshold;
 }
 
 //======================================

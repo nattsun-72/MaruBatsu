@@ -44,7 +44,8 @@
     "chainShard":    { "charges": 3 },                  // 連鎖の欠片
     "immortal":      { "charges": 2 },                  // 不死
     "sandsOfTime":   { "charges": 2, "refillSeconds": 180.0 }, // 時の砂
-    "timeStop":      { "seconds": 9999.0 }              // 時間停止
+    "timeStop":      { "seconds": 9999.0 },             // 時間停止
+    "cornerDominion":{ "threshold": 3 }                 // 隅取り: 勝利に必要な支配隅数(3 or 4)
   },
 
   // --- ボスギミック ---

@@ -13,8 +13,10 @@
 // 各ボスの具象クラス (このファイルだけが全ボスを知る)
 //--------------------------------------
 #include "boss/ice_board_boss.h"
+#include "boss/mirror_warden_boss.h"
 #include "boss/spiral_queen_boss.h"
 #include "boss/chain_pulse_boss.h"
+#include "boss/time_devourer_boss.h"
 #include "boss/gravity_tyrant_boss.h"
 #include "boss/engraved_one_boss.h"
 
@@ -39,8 +41,10 @@ namespace
     // ボス追加はこの配列に1行足すだけ。順序がそのままラン進行順になる。
     const Entry g_Roster[] = {
         { 1, "ice",     [] () -> std::unique_ptr<Boss> { return std::make_unique<IceBoardBoss>();     } },
+        { 2, "mirror",  [] () -> std::unique_ptr<Boss> { return std::make_unique<MirrorWardenBoss>();  } },
         { 2, "spiral",  [] () -> std::unique_ptr<Boss> { return std::make_unique<SpiralQueenBoss>();   } },
         { 3, "chain",   [] () -> std::unique_ptr<Boss> { return std::make_unique<ChainPulseBoss>();    } },
+        { 3, "time",    [] () -> std::unique_ptr<Boss> { return std::make_unique<TimeDevourerBoss>();  } },
         { 4, "gravity", [] () -> std::unique_ptr<Boss> { return std::make_unique<GravityTyrantBoss>(); } },
         { 5, "final",   [] () -> std::unique_ptr<Boss> { return std::make_unique<EngravedOneBoss>();   } },
     };

@@ -42,12 +42,15 @@
     "boardExpand":   { "width": 4, "height": 4 },       // 盤面拡張
     "spiralShard":   { "charges": 2 },                  // 螺旋の欠片
     "chainShard":    { "charges": 3 },                  // 連鎖の欠片
-    "immortal":      { "charges": 2 }                   // 不死
+    "immortal":      { "charges": 2 },                  // 不死
+    "sandsOfTime":   { "charges": 2, "refillSeconds": 180.0 }, // 時の砂
+    "timeStop":      { "seconds": 9999.0 }              // 時間停止
   },
 
   // --- ボスギミック ---
   "bosses": {
-    "chainPulse": { "pulseSteps": 1 },   // 連鎖の鼓動: 1設置あたりの拡張数
-    "engraved":   { "pulseSteps": 1 }    // 刻まれし者: 連鎖モードの拡張数
+    "chainPulse": { "pulseSteps": 1 },              // 連鎖の鼓動: 1設置あたりの拡張数
+    "engraved":   { "pulseSteps": 1 },              // 刻まれし者: 連鎖モードの拡張数
+    "timeEater":  { "factor": 0.5, "minFloor": 30.0 } // 時喰らい: 思考時間の係数/下限
   }
 }

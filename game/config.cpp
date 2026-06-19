@@ -10,6 +10,8 @@
  ****************************************/
 #include "config.h"
 
+#include "debug_ostream.h"
+
 #include <cctype>
 #include <fstream>
 #include <sstream>
@@ -167,7 +169,13 @@ namespace Config
 
         /*--- ファイル全体を読み込む ---*/
         std::ifstream ifs(CONFIG_PATH, std::ios::binary);
-        if (!ifs) return false;   // ファイル無し → 全て既定値で動作
+        if (!ifs)
+        {
+            // ファイル無し → 全て既定値で動作 (兆候を残す)
+            hal::dout << "[Config] not found: " << CONFIG_PATH
+                      << " (using defaults)" << std::endl;
+            return false;
+        }
         std::ostringstream oss;
         oss << ifs.rdbuf();
         const std::string text = oss.str();
@@ -177,7 +185,10 @@ namespace Config
         ps.ParseValue("");
         if (!ps.ok)
         {
+            // 構文エラー → 全クリアして既定値へ。原因に気づけるよう警告を出す。
             g_Values.clear();
+            hal::dout << "[Config] parse failed: " << CONFIG_PATH
+                      << " (check JSON syntax; using defaults)" << std::endl;
             return false;
         }
         return true;

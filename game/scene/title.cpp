@@ -34,6 +34,7 @@ namespace
     const DirectX::XMFLOAT4 COLOR_SUB      { 0.55f, 0.85f, 1.00f, 1.0f };  // サブタイトル
     const DirectX::XMFLOAT4 COLOR_HINT     { 0.60f, 0.65f, 0.75f, 1.0f };  // プロンプト
     const DirectX::XMFLOAT4 COLOR_CLEAR    { 0.60f, 1.00f, 0.60f, 1.0f };  // 制覇表示
+    const DirectX::XMFLOAT4 COLOR_WARN     { 1.00f, 0.70f, 0.30f, 1.0f };  // 設定エラー警告
     const DirectX::XMFLOAT4 COLOR_BTN_BG   { 0.12f, 0.13f, 0.20f, 0.96f };  // ボタン本体
     const DirectX::XMFLOAT4 COLOR_BTN_HOVER{ 0.24f, 0.28f, 0.40f, 0.98f };  // ボタン(ホバー)
     const DirectX::XMFLOAT4 COLOR_BTN_EDGE { 0.55f, 0.85f, 1.00f, 1.0f };  // ボタン縁取り
@@ -46,6 +47,7 @@ namespace
     constexpr float HBTN_H   = 44.0f;
 
     double g_BlinkTimer = 0.0;   // 開始プロンプト点滅用の経過時間
+    bool   g_ConfigOk   = true;  // game_config.json の読み込みに成功したか
 
     //--------------------------------------
     // メニューボタンのレイアウト (Update/Draw 共有)
@@ -100,8 +102,9 @@ namespace
 //======================================
 void Title_Initialize()
 {
-    // 設定ファイルを再読込 (タイトルへ戻るたびに調整が反映される)
-    Config::Reload();
+    // 設定ファイルを再読込 (タイトルへ戻るたびに調整が反映される)。
+    // 失敗時はタイトルに警告を表示し、調整が効かない原因に気づけるようにする。
+    g_ConfigOk = Config::Reload();
 
     // 描画モジュールを初期化し、点滅タイマーをリセット
     Prim::Initialize();
@@ -228,6 +231,14 @@ void Title_Draw()
             Text::Draw((screenW - hintW) * 0.5f, screenH * 0.72f,
                        hint, TEXT_HINT_SIZE, COLOR_HINT);
         }
+    }
+
+    /*--- 設定読み込み失敗の警告 (調整が効かない原因に気づけるように) ---*/
+    if (!g_ConfigOk)
+    {
+        const char* warn = "game_config.json 読み込み失敗 — 既定値で動作中";
+        const float ww = Text::MeasureWidth(warn, 16.0f);
+        Text::Draw((screenW - ww) * 0.5f, screenH - 28.0f, warn, 16.0f, COLOR_WARN);
     }
 
     /*--- 「戦績」ボタン (常時表示) ---*/

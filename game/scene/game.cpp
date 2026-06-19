@@ -2247,8 +2247,9 @@ void Game_Update(double elapsed_time)
         switch (go.action)
         {
         case GameOverAction::Reward:
-            // 通常ボス撃破: 固有報酬を予約し、ボス番号を進めて報酬画面へ
-            if (g_Boss) RunState::SetPendingBossReward(g_Boss->GetRewardAbility());
+            // 通常ボス撃破: 固有報酬を確定付与し、別枠の3択を提示する
+            // (企画書の「ボス固有能力(確定)＋3択」= 1戦で2つ獲得)
+            if (g_Boss) RunState::GrantBossReward(g_Boss->GetRewardAbility());
             RunState::IncrementBoss();
             RunState::GenerateRewardChoices();
             Scene_Change(Scene::REWARD);

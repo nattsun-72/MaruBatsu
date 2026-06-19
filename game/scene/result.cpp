@@ -168,6 +168,16 @@ void Result_Draw()
     const float headW = Text::MeasureWidth(head, TEXT_BIG);
     Text::Draw((screenW - headW) * 0.5f, 60.0f, head, TEXT_BIG, headColor);
 
+    /*--- レジェンダリー初解放の告知 (ラスボス初撃破時) ---*/
+    if (r.cleared && r.legendaryUnlocked)
+    {
+        const char* unlock = "★ レジェンダリー解放！ 以降の報酬に出現する ★";
+        const DirectX::XMFLOAT4 gold{ 1.00f, 0.80f, 0.30f, 1.0f };
+        const float uw = Text::MeasureWidth(unlock, TEXT_STAT);
+        Text::Draw((screenW - uw) * 0.5f, 60.0f + TEXT_BIG + 6.0f,
+                   unlock, TEXT_STAT, gold);
+    }
+
     /*--- 戦績ブロック (中央寄せ) ---*/
     char buf[128];
     float y = 170.0f;

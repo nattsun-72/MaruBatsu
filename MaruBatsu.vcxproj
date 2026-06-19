@@ -210,6 +210,7 @@
     <ClCompile Include="game\ability\abilities\contemplation.cpp" />
     <ClCompile Include="game\ability\abilities\focus.cpp" />
     <ClCompile Include="game\ability\abilities\ice_tile.cpp" />
+    <ClCompile Include="game\ability\abilities\absolute_victory.cpp" />
     <ClCompile Include="game\ability\abilities\boss_engraved.cpp" />
     <ClCompile Include="game\ability\abilities\boss_gravity.cpp" />
     <ClCompile Include="game\ability\abilities\boss_mirror.cpp" />
@@ -283,6 +284,7 @@
     <ClInclude Include="game\ability\abilities\contemplation.h" />
     <ClInclude Include="game\ability\abilities\focus.h" />
     <ClInclude Include="game\ability\abilities\ice_tile.h" />
+    <ClInclude Include="game\ability\abilities\absolute_victory.h" />
     <ClInclude Include="game\ability\abilities\boss_engraved.h" />
     <ClInclude Include="game\ability\abilities\boss_gravity.h" />
     <ClInclude Include="game\ability\abilities\boss_mirror.h" />

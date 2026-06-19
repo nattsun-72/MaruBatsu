@@ -29,8 +29,25 @@ namespace
     int    g_RunTurns   = 0;        // ランの累積ターン数
     RunResult g_LastResult;         // 直近に確定した戦績(リザルト画面用)
 
-    // 直前に撃破したボスの固有報酬 (次の報酬候補へ1枠確保される)
-    std::shared_ptr<Ability> g_PendingBossReward;
+    // 直近に確定付与したボス報酬 (報酬画面の表示用)
+    std::shared_ptr<Ability> g_LastBossReward;
+
+    // メタ進行 (ラン跨ぎで永続。save/progress.dat)
+    const char* PROGRESS_PATH      = "save/progress.dat";
+    bool        g_ProgressLoaded   = false;
+    bool        g_FinalBossDefeated = false;
+
+    /** @brief 進行データを初回アクセス時に読み込む */
+    void EnsureProgressLoaded()
+    {
+        if (g_ProgressLoaded) return;
+        g_ProgressLoaded = true;
+        std::ifstream ifs(PROGRESS_PATH, std::ios::binary);
+        if (!ifs) return;
+        int v = 0;
+        ifs >> v;
+        g_FinalBossDefeated = (v != 0);
+    }
 
     // セーブ/履歴ファイル (実行ディレクトリ相対、BOMなしUTF-8テキスト)
     const char* SAVE_DIR     = "save";
@@ -113,9 +130,10 @@ namespace RunState
     void ResetRun()
     {
         // 所持アビリティ・報酬候補・ボス進行・クリア表示・統計をすべて初期化
+        // (メタ進行 g_FinalBossDefeated はラン跨ぎで永続するため触らない)
         g_PlayerAbilities.clear();
         g_RewardChoices.clear();
-        g_PendingBossReward.reset();
+        g_LastBossReward.reset();
         g_BossIndex   = 0;
         g_RunCleared  = false;
         g_RunTime     = 0.0;
@@ -139,6 +157,9 @@ namespace RunState
         g_LastResult.turns          = g_RunTurns;
         g_LastResult.defeatedByBoss = defeatedByBoss;
         g_LastResult.dateTime       = NowString();
+
+        // クリア時はラスボス撃破を永続化し、初解放かどうかを記録する
+        g_LastResult.legendaryUnlocked = cleared ? MarkFinalBossDefeated() : false;
 
         // 取得アビリティ名のスナップショット(履歴記録・表示用)
         g_LastResult.abilityNames.clear();
@@ -197,10 +218,26 @@ namespace RunState
         return recent;
     }
 
-    void SetPendingBossReward(std::shared_ptr<Ability> reward)
+    void GrantBossReward(std::shared_ptr<Ability> reward)
     {
-        g_PendingBossReward = std::move(reward);
+        g_LastBossReward.reset();
+        if (!reward) return;
+
+        // 一度限りアビリティを既に所持しているなら付与しない(重複無意味)
+        if (reward->unique)
+        {
+            for (const auto& a : g_PlayerAbilities)
+            {
+                if (a->name == reward->name) return;
+            }
+        }
+
+        // 確定報酬として所持に追加し、表示用に控える
+        g_PlayerAbilities.push_back(reward);
+        g_LastBossReward = reward;
     }
+
+    const std::shared_ptr<Ability>& LastBossReward() { return g_LastBossReward; }
 
     void GenerateRewardChoices()
     {
@@ -213,30 +250,41 @@ namespace RunState
             if (a->unique) excludeNames.push_back(a->name);
         }
 
-        g_RewardChoices.clear();
-
-        /*--- 撃破ボスの固有報酬を1枠目に確保する ---*/
-        // 一度限りで所持済みの場合は確保せず、通常抽選にフォールバック。
-        if (g_PendingBossReward)
+        // レジェンダリー未解放(ラスボス未撃破)なら、抽選候補から除外する
+        if (!IsLegendaryUnlocked())
         {
-            const bool excluded =
-                std::find(excludeNames.begin(), excludeNames.end(),
-                          g_PendingBossReward->name) != excludeNames.end();
-            if (!excluded)
+            for (const auto& a : AbilityPool::CreateAll())
             {
-                g_RewardChoices.push_back(g_PendingBossReward);
-                excludeNames.push_back(g_PendingBossReward->name);  // 残枠との重複防止
+                if (a->rarity == Rarity::Legendary) excludeNames.push_back(a->name);
             }
-            g_PendingBossReward.reset();
         }
 
-        /*--- 残り枠をレアリティ重み付き抽選で埋める ---*/
-        const int remain = choiceCount - static_cast<int>(g_RewardChoices.size());
-        if (remain > 0)
+        // 確定報酬とは別枠の3択をレアリティ重み付き抽選で生成する
+        g_RewardChoices = AbilityPool::PickRandom(choiceCount, excludeNames);
+    }
+
+    //======================================
+    // メタ進行
+    //======================================
+    bool IsLegendaryUnlocked()
+    {
+        EnsureProgressLoaded();
+        return g_FinalBossDefeated;
+    }
+
+    bool MarkFinalBossDefeated()
+    {
+        EnsureProgressLoaded();
+        const bool wasFirst = !g_FinalBossDefeated;
+        g_FinalBossDefeated = true;
+        if (wasFirst)
         {
-            auto picked = AbilityPool::PickRandom(remain, excludeNames);
-            for (auto& a : picked) g_RewardChoices.push_back(std::move(a));
+            std::error_code ec;
+            std::filesystem::create_directories(SAVE_DIR, ec);
+            std::ofstream ofs(PROGRESS_PATH, std::ios::binary | std::ios::trunc);
+            if (ofs) ofs << "1\n";
         }
+        return wasFirst;
     }
 
     //======================================
@@ -310,7 +358,7 @@ namespace RunState
         g_RunTurns        = runTurns;
         g_PlayerAbilities = std::move(loaded);
         g_RewardChoices.clear();
-        g_PendingBossReward.reset();
+        g_LastBossReward.reset();
         g_RunCleared      = false;
         return true;
     }

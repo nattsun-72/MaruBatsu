@@ -37,6 +37,7 @@ struct RunResult
     std::string defeatedByBoss;          // 敗北時に倒されたボス名 (クリア時は空)
     std::string dateTime;                // 終了日時 "YYYY/MM/DD HH:MM"
     std::vector<std::string> abilityNames; // 取得アビリティ名(取得順)
+    bool        legendaryUnlocked = false; // このクリアでレジェンダリーを初解放したか
 };
 
 //======================================
@@ -72,15 +73,28 @@ namespace RunState
     void ResetRun();
 
     /**
-     * @brief  撃破したボスの固有報酬を次回の報酬候補へ予約する
+     * @brief  撃破ボスの固有報酬(弱化版)をプレイヤーへ確定付与する
      * @param  reward ボスの GetRewardAbility() が返す弱化版アビリティ
-     * @detail 次の GenerateRewardChoices で選択肢の1枠に必ず含まれる
-     *         (一度限りで所持済みの場合は通常抽選にフォールバック)。
+     * @detail 企画書の「ボス固有能力(確定報酬)」に相当。所持に直接追加する。
+     *         一度限りで所持済みの場合は付与しない(LastBossReward は null)。
      */
-    void SetPendingBossReward(std::shared_ptr<Ability> reward);
+    void GrantBossReward(std::shared_ptr<Ability> reward);
+    /** @brief 直近に確定付与したボス報酬を取得 (報酬画面の表示用。無ければ null) */
+    const std::shared_ptr<Ability>& LastBossReward();
 
-    /** @brief 報酬の選択肢をレアリティ重み付き抽選で生成する */
+    /** @brief 報酬の3択をレアリティ重み付き抽選で生成する (確定報酬とは別枠) */
     void GenerateRewardChoices();
+
+    //======================================
+    // メタ進行 (ラン跨ぎで永続)
+    //======================================
+    /** @brief レジェンダリーが解放済みか (ラスボス初撃破で解放) */
+    bool IsLegendaryUnlocked();
+    /**
+     * @brief  ラスボス撃破を記録し永続化する
+     * @return 今回が初撃破(=レジェンダリー新規解放)なら true
+     */
+    bool MarkFinalBossDefeated();
 
     //======================================
     // ラン統計 (リザルト用)

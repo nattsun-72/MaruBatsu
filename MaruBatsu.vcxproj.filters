@@ -130,6 +130,9 @@
     <ClCompile Include="game\ability\abilities\board_expand.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
+    <ClCompile Include="game\ability\abilities\absolute_victory.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
     <ClCompile Include="game\ability\abilities\boss_engraved.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
@@ -358,6 +361,9 @@
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\board_expand.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\absolute_victory.h">
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\boss_engraved.h">

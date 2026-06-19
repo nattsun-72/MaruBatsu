@@ -21,6 +21,7 @@
 #include "keyboard.h"
 
 #include <DirectXMath.h>
+#include <cstdio>
 
 //--------------------------------------
 // 定数・内部状態 (無名名前空間)
@@ -203,7 +204,18 @@ void Reward_Draw()
     /*--- 見出しを上部中央に描画 ---*/
     const char* header = "報酬を選択";
     const float hw = Text::MeasureWidth(header, TEXT_HEADER);
-    Text::Draw((screenW - hw) * 0.5f, 60.0f, header, TEXT_HEADER, COLOR_HEADER);
+    Text::Draw((screenW - hw) * 0.5f, 36.0f, header, TEXT_HEADER, COLOR_HEADER);
+
+    /*--- 確定報酬(ボス固有能力)の獲得表示 ---*/
+    const auto& bossReward = RunState::LastBossReward();
+    if (bossReward)
+    {
+        char buf[128];
+        std::snprintf(buf, sizeof(buf), "確定報酬を獲得： %s", bossReward->name.c_str());
+        const float bw = Text::MeasureWidth(buf, TEXT_HINT);
+        Text::Draw((screenW - bw) * 0.5f, 92.0f, buf, TEXT_HINT,
+                   RarityColor(bossReward->rarity));
+    }
 
     const auto& choices = RunState::RewardChoices();
     const int total = static_cast<int>(choices.size());

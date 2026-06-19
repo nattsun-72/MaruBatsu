@@ -7,6 +7,7 @@
  ****************************************/
 #include "ability_pool.h"
 
+#include "ability/abilities/absolute_victory.h"
 #include "ability/abilities/board_expand.h"
 #include "ability/abilities/chain_shard.h"
 #include "ability/abilities/contemplation.h"
@@ -85,8 +86,9 @@ namespace AbilityPool
             std::make_shared<ImmortalAbility>(),       // 不死 (L/一度限り)
             std::make_shared<SandsOfTimeAbility>(),    // 時の砂 (R/任意発動)
             std::make_shared<ReflectionAbility>(),     // 鏡映 (E/一度限り)
-            std::make_shared<CornerDominionAbility>(), // 四隅の覇 (E/一度限り)
+            std::make_shared<CornerDominionAbility>(), // 隅取り (E/一度限り)
             std::make_shared<TimeStopAbility>(),       // 時間停止 (L/一度限り)
+            std::make_shared<AbsoluteVictoryAbility>(),// 絶対勝利 (L/一度限り)
         };
     }
 

@@ -71,7 +71,8 @@ namespace
 }
 
 // 内部変数
-static int g_AudioHandles[SOUND_MAX];
+static int  g_AudioHandles[SOUND_MAX];
+static bool g_Initialized = false;   // Initialize 完了前の再生要求を弾くためのガード
 static SoundID g_CurrentBGM = SOUND_MAX;
 static float g_BGMVolume = 1.0f;
 static float g_SEVolume = 1.0f;
@@ -103,6 +104,7 @@ void SoundManager_Initialize()
     g_CurrentBGM = SOUND_MAX;
     g_BGMVolume = 1.0f;
     g_SEVolume = 1.0f;
+    g_Initialized = true;
 }
 
 void SoundManager_Finalize()
@@ -117,10 +119,12 @@ void SoundManager_Finalize()
     }
 
     UninitAudio();
+    g_Initialized = false;
 }
 
 void SoundManager_PlayBGM(SoundID id)
 {
+    if (!g_Initialized) return;
     if (id < 0 || id >= SOUND_MAX) return;
     if (g_AudioHandles[id] < 0) return;
     if (g_CurrentBGM == id) return;
@@ -153,6 +157,7 @@ void SoundManager_SetBGMVolume(float volume)
 
 void SoundManager_PlaySE(SoundID id)
 {
+    if (!g_Initialized) return;
     if (id < 0 || id >= SOUND_MAX) return;
     if (g_AudioHandles[id] < 0) return;
 

@@ -867,6 +867,12 @@ namespace
 
         // 設置+ボスギミック適用後の盤面を返す遷移関数 (AIがギミックを読むために使う)。
         // 現ターンの slideAnchorSide(重駒の固定対象)を引き継いで実戦と同条件で評価する。
+        // 既知の制約: この sim は完全な純関数ではない。OnPlace は「生きた」
+        // アビリティ実体を走らせるため、探索中に各ギミックの共有静的RNGが
+        // 進む(=後で実戦で見えるギミック抽選が探索で進んだRNG位置から出る)。
+        // 乱択ギミックの結果は元々一様乱数なのでプレイヤーから見て不正には
+        // ならず、現状シード固定ラン等も無いため実害は無い。将来シード固定
+        // ランを入れる際は、探索用にアビリティ状態/RNGを複製して分離すること。
         AI::PlacementSim sim = [](const Board& b, Vec2 pos, Piece who) -> Board
         {
             GameState tmp;
@@ -926,8 +932,10 @@ namespace
         // 敗北フック (不死等で打ち消し可能)
         if (g_Registry.HandleDefeat(g_State, Piece::Player))
         {
-            // 敗北回避: 残時間を新規取得
+            // 敗北回避: 残時間を新規取得。回復後の再カウントダウンでも警告音が
+            // 鳴るよう、残時間わずか フラグもここでリセットする。
             g_State.remainingTime = g_Registry.GetTurnTime(Piece::Player);
+            g_TimerLowSePlayed    = false;
             return;
         }
         g_State.result = MatchResult::Timeout;

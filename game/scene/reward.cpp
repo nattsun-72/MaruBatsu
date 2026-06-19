@@ -19,6 +19,7 @@
 #include "direct3d.h"
 #include "input_manager.h"
 #include "keyboard.h"
+#include "sound_manager.h"
 
 #include <DirectXMath.h>
 #include <cstdio>
@@ -124,6 +125,10 @@ void Reward_Initialize()
         RunState::GenerateRewardChoices();
     }
     g_HoverIndex = -1;
+
+    // 報酬は対戦の流れの一部なので対戦BGMを継続させる
+    // (PlayBGM は同一曲なら鳴り直さないため、対戦↔報酬では途切れない)
+    SoundManager_PlayBGM(SOUND_BGM_GAME);
 }
 
 void Reward_Finalize()
@@ -145,6 +150,7 @@ void Reward_Update(double /*elapsed_time*/)
     const float oy      = CardOriginY(screenH);
 
     /*--- マウスが乗っているカードを判定 ---*/
+    const int prevHover = g_HoverIndex;
     g_HoverIndex = -1;
     for (int i = 0; i < total; ++i)
     {
@@ -156,10 +162,16 @@ void Reward_Update(double /*elapsed_time*/)
             break;
         }
     }
+    // 別カードへホバーが移った瞬間だけカーソル音 (毎フレーム鳴らさない)
+    if (g_HoverIndex >= 0 && g_HoverIndex != prevHover)
+    {
+        SoundManager_PlaySE(SOUND_SE_SELECT);
+    }
 
     /*--- 左クリックで選択を確定 → プレイヤー所持に追加 ---*/
     if (InputManager_IsMouseLeftTrigger() && g_HoverIndex >= 0)
     {
+        SoundManager_PlaySE(SOUND_SE_DECIDE);
         RunState::PlayerAbilities().push_back(choices[g_HoverIndex]);
         RunState::RewardChoices().clear();
 
@@ -185,6 +197,7 @@ void Reward_Update(double /*elapsed_time*/)
     /*--- ESC でタイトルへ戻る (ラン中断扱い) ---*/
     if (Keyboard_IsKeyDown(KK_ESCAPE))
     {
+        SoundManager_PlaySE(SOUND_SE_CANCEL);
         RunState::RewardChoices().clear();
         Scene_Change(Scene::TITLE);
     }

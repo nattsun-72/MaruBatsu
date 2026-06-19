@@ -17,6 +17,7 @@
 
 #include "direct3d.h"
 #include "input_manager.h"
+#include "sound_manager.h"
 
 #include <DirectXMath.h>
 #include <cstdio>
@@ -108,6 +109,9 @@ void History_Initialize()
     g_History   = RunState::LoadHistory();
     g_Scroll    = 0.0;
     g_WheelPrev = InputManager_GetMouseState().scrollWheelValue;
+
+    // 戦績はタイトルのサブ画面: タイトルBGMを継続させる (PlayBGMは同一曲なら無音)
+    SoundManager_PlayBGM(SOUND_BGM_TITLE);
 }
 
 void History_Finalize()
@@ -141,6 +145,7 @@ void History_Update(double /*elapsed_time*/)
         const auto& mouse = InputManager_GetMouseState();
         if (BackBtnContains(screenW, screenH, mouse.x, mouse.y))
         {
+            SoundManager_PlaySE(SOUND_SE_CANCEL);
             Scene_Change(Scene::TITLE);
         }
     }

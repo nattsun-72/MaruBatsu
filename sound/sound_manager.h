@@ -10,6 +10,8 @@
 #define SOUND_MANAGER_H
 
 // サウンドID定義
+// ※ ここに ID を追加したら sound_manager.cpp の SOUND_FILES[] にも
+//    同じ順序で対応パスを1行追加すること (要素数が SOUND_MAX と一致する必要あり)。
 enum SoundID
 {
     // BGM
@@ -17,11 +19,18 @@ enum SoundID
     SOUND_BGM_GAME,
     SOUND_BGM_RESULT,
 
-    // SE - UI（β以降で実装）
-    SOUND_SE_SELECT,
-    SOUND_SE_DECIDE,
-    SOUND_SE_CANCEL,
-    SOUND_SE_PAUSE,
+    // SE - UI
+    SOUND_SE_SELECT,    // カーソル移動・カードホバー
+    SOUND_SE_DECIDE,    // 決定
+    SOUND_SE_CANCEL,    // 戻る・キャンセル
+    SOUND_SE_PAUSE,     // ポーズ (将来用)
+
+    // SE - ゲームプレイ
+    SOUND_SE_PLACE,     // 駒の設置
+    SOUND_SE_WIN,       // 勝利
+    SOUND_SE_LOSE,      // 敗北・時間切れ
+    SOUND_SE_ABILITY,   // アビリティ/ボスギミックの発動
+    SOUND_SE_TIMER_LOW, // 思考時間 残りわずか
 
     // 総数
     SOUND_MAX

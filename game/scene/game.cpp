@@ -36,6 +36,7 @@
 #include "direct3d.h"
 #include "input_manager.h"
 #include "keyboard.h"
+#include "sound_manager.h"
 
 #include <DirectXMath.h>
 #include <algorithm>
@@ -178,6 +179,13 @@ namespace
     double g_AnimClock  = 0.0;  // 演出用クロック (シェブロンの脈動)
     double g_TimerFlash = 0.0;  // アビリティ発動フラッシュ演出の残り時間
     std::string g_FlashText;    // 発動フラッシュに表示する文言 (アビリティ毎)
+
+    //--------------------------------------
+    // 効果音トリガ用の状態
+    //--------------------------------------
+    constexpr double TIMER_LOW_SE_THRESHOLD = 10.0;  // 残時間が これ以下 で警告音(1度)
+    MatchResult g_PrevResult     = MatchResult::Playing;  // 前フレームの勝敗(遷移検出用)
+    bool        g_TimerLowSePlayed = false;               // 当該ターンで警告音を鳴らしたか
 
     //--------------------------------------
     // アビリティ履歴ポップアップの状態
@@ -448,6 +456,7 @@ namespace
                 const Board boardBefore = g_State.board;
 
                 a->Activate(g_State);
+                SoundManager_PlaySE(SOUND_SE_ABILITY); // 任意発動アビリティの効果音
                 g_FlashText  = a->flashText;           // 発動フィードバック文言
                 g_TimerFlash = TIMER_FLASH_DURATION;
 
@@ -510,6 +519,7 @@ namespace
         g_State.currentPlayer       = p;
         g_State.placementsRemaining = g_Registry.GetPlacementCount(p);
         g_State.remainingTime       = g_Registry.GetTurnTime(p);
+        g_TimerLowSePlayed          = false;   // 新ターン: 残時間警告音をリセット
         g_Registry.OnTurnStart(g_State, p);
 
         if (p == Piece::Enemy)
@@ -586,6 +596,7 @@ namespace
         g_State.result = MatchResult::Playing;
         g_State.winner = Piece::Empty;
         g_State.turnCount = 1;
+        g_PrevResult   = MatchResult::Playing;   // 勝敗SEの遷移検出をリセット
 
         /*--- フック・演出状態の初期化 ---*/
         g_Registry.ResetToDefaults();
@@ -751,6 +762,8 @@ namespace
         g_State.board.Set(pos.x, pos.y, placedBy);
         --g_State.placementsRemaining;
 
+        SoundManager_PlaySE(SOUND_SE_PLACE);   // 駒の設置音
+
         // 設置時演出 (フック発火前に位置を記録)
         g_LastPlacedPos   = pos;
         g_LastPlacedPiece = placedBy;
@@ -762,6 +775,12 @@ namespace
 
         // 設置時フック (氷駒/氷盤/連鎖/爆弾等が animPhases に効果を積む)
         g_Registry.OnPlace(g_State, pos, placedBy);
+
+        // ギミックが盤面を動かした場合のみ、発動音を重ねる
+        if (!g_State.animPhases.empty())
+        {
+            SoundManager_PlaySE(SOUND_SE_ABILITY);
+        }
 
         // 積まれた効果フェーズを順次アニメ再生
         StartEffectAnimation(boardStart);
@@ -873,6 +892,16 @@ namespace
         if (g_State.result != MatchResult::Playing) return;
         if (g_State.currentPlayer != Piece::Player) return;
         g_State.remainingTime -= dt;
+
+        // 残時間が しきい値 を下回った最初の1回だけ警告音を鳴らす
+        if (!g_TimerLowSePlayed
+         && g_State.remainingTime <= TIMER_LOW_SE_THRESHOLD
+         && g_State.remainingTime > 0.0)
+        {
+            SoundManager_PlaySE(SOUND_SE_TIMER_LOW);
+            g_TimerLowSePlayed = true;
+        }
+
         if (g_State.remainingTime > 0.0) return;
 
         g_State.remainingTime = 0.0;
@@ -2146,6 +2175,9 @@ void Game_Initialize()
     Prim::Initialize();
     Text::Initialize();
     ResetMatch();
+
+    // 対戦BGM (素材未配置なら無音)。報酬画面と同一曲なので往復で途切れない。
+    SoundManager_PlayBGM(SOUND_BGM_GAME);
 }
 
 void Game_Finalize()
@@ -2166,6 +2198,21 @@ void Game_Update(double elapsed_time)
     g_AnimClock += elapsed_time;  // シェブロン脈動用クロック
     if (g_TimerFlash    > 0.0) g_TimerFlash    -= elapsed_time;
     if (g_ImmortalFlash > 0.0) g_ImmortalFlash -= elapsed_time;
+
+    // 勝敗が確定した瞬間に一度だけ結果音を鳴らす (Playing→終局の遷移を検出)
+    if (g_State.result != g_PrevResult)
+    {
+        if (g_State.result == MatchResult::Win)
+        {
+            SoundManager_PlaySE(SOUND_SE_WIN);
+        }
+        else if (g_State.result == MatchResult::Lose
+              || g_State.result == MatchResult::Timeout)
+        {
+            SoundManager_PlaySE(SOUND_SE_LOSE);
+        }
+        g_PrevResult = g_State.result;
+    }
 
     // マウスホイールの変化量を算出 (履歴ポップアップのスクロールに使用)
     {
@@ -2242,6 +2289,7 @@ void Game_Update(double elapsed_time)
     for (const auto& go : BuildGameOverButtons())
     {
         if (!ButtonContains(go.btn, mouse.x, mouse.y)) continue;
+        SoundManager_PlaySE(SOUND_SE_DECIDE);
         switch (go.action)
         {
         case GameOverAction::Reward:

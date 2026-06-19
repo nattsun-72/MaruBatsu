@@ -17,6 +17,7 @@
 
 #include "direct3d.h"
 #include "input_manager.h"
+#include "sound_manager.h"
 
 #include <DirectXMath.h>
 #include <cstdio>
@@ -118,6 +119,9 @@ void Result_Initialize()
 {
     Prim::Initialize();
     Text::Initialize();
+
+    // リザルトBGM (素材未配置なら無音)
+    SoundManager_PlayBGM(SOUND_BGM_RESULT);
 }
 
 void Result_Finalize()
@@ -138,6 +142,7 @@ void Result_Update(double /*elapsed_time*/)
     // 「もう一度挑戦」: ラン状態を初期化して本編へ
     if (BtnContains(RetryBtn(screenW, screenH), mouse.x, mouse.y))
     {
+        SoundManager_PlaySE(SOUND_SE_DECIDE);
         RunState::ResetRun();
         Scene_Change(Scene::GAME);
         return;
@@ -145,6 +150,7 @@ void Result_Update(double /*elapsed_time*/)
     // 「タイトルへ」: タイトル画面へ
     if (BtnContains(TitleBtn(screenW, screenH), mouse.x, mouse.y))
     {
+        SoundManager_PlaySE(SOUND_SE_DECIDE);
         Scene_Change(Scene::TITLE);
         return;
     }

@@ -15,6 +15,7 @@
 #include "direct3d.h"
 #include "input_manager.h"
 #include "keyboard.h"
+#include "sound_manager.h"
 
 //--------------------------------------
 // 定数・内部状態 (無名名前空間)
@@ -92,6 +93,7 @@ namespace
     /** @brief 新規ランを開始する (ラン状態を初期化して本編へ) */
     void StartNewRun()
     {
+        SoundManager_PlaySE(SOUND_SE_DECIDE);
         RunState::ResetRun();
         Scene_Change(Scene::GAME);
     }
@@ -110,6 +112,9 @@ void Title_Initialize()
     Prim::Initialize();
     Text::Initialize();
     g_BlinkTimer = 0.0;
+
+    // タイトルBGM (素材未配置なら無音で安全に継続)
+    SoundManager_PlayBGM(SOUND_BGM_TITLE);
 }
 
 void Title_Finalize()
@@ -132,6 +137,7 @@ void Title_Update(double elapsed_time)
     if (InputManager_IsMouseLeftTrigger()
      && BtnContains(HistoryBtn(screenW, screenH), mouse.x, mouse.y))
     {
+        SoundManager_PlaySE(SOUND_SE_DECIDE);
         Scene_Change(Scene::HISTORY);
         return;
     }
@@ -159,6 +165,7 @@ void Title_Update(double elapsed_time)
 
         if (wantContinue)
         {
+            SoundManager_PlaySE(SOUND_SE_DECIDE);
             // 復元失敗時は安全側で新規ランにフォールバック
             if (!RunState::LoadRun()) RunState::ResetRun();
             Scene_Change(Scene::GAME);

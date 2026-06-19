@@ -166,7 +166,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D /Y "$(TargetDir)*.cso" "$(ProjectDir)assets/shader"</Command>
+      <Command>xcopy /D /Y "$(TargetDir)*.cso" "$(ProjectDir)assets/shader"
+if exist "$(ProjectDir)assets\sound\*.mp3" xcopy /D /Y /I "$(ProjectDir)assets\sound\*.mp3" "$(TargetDir)assets\sound\"
+if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\sound\*.wav" "$(TargetDir)assets\sound\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -190,7 +192,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D /Y "$(TargetDir)*.cso" "$(ProjectDir)assets/shader"</Command>
+      <Command>xcopy /D /Y "$(TargetDir)*.cso" "$(ProjectDir)assets/shader"
+if exist "$(ProjectDir)assets\sound\*.mp3" xcopy /D /Y /I "$(ProjectDir)assets\sound\*.mp3" "$(TargetDir)assets\sound\"
+if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\sound\*.wav" "$(TargetDir)assets\sound\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

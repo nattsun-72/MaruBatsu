@@ -106,7 +106,10 @@ void Scene_Refresh()
     // 予約先が現在シーンと異なる場合のみ、終了→切替→初期化を行う
     if (g_Scene != g_SceneNext)
     {
-        SoundManager_StopAll();   // 旧シーンの再生音を停止
+        // BGM は各シーンの _Initialize が PlayBGM で宣言する (同一曲なら
+        // 継続、別曲なら自動で切り替わる)。ここで一括停止すると同一曲を
+        // 跨ぐシーン遷移(対戦↔報酬など)で毎回頭から鳴り直してしまうため、
+        // あえて停止しない。単発SEは短く自然に減衰するので放置でよい。
         Scene_Finalize();
         g_Scene = g_SceneNext;
         Scene_Initialize();

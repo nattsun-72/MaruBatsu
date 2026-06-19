@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MaruBatsu ボス順エディタ</title>
+<style>
+  :root{
+    --bg:#06070d; --panel:#0e1018; --panel2:#141826; --edge:#2a3350;
+    --text:#e6ecff; --muted:#8a93b2; --accent:#5bd6ff; --warn:#ffb454; --ok:#6ee787;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; }
+  body{
+    background:radial-gradient(1200px 600px at 50% -10%, #101830 0%, var(--bg) 60%), var(--bg);
+    color:var(--text);
+    font-family:"Segoe UI", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+    padding:18px 22px 40px;
+  }
+  h1{ font-size:20px; margin:0 0 2px; letter-spacing:.04em; }
+  .sub{ color:var(--muted); font-size:12.5px; margin-bottom:14px; }
+  .bar{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  button{
+    background:var(--panel2); color:var(--text); border:1px solid var(--edge);
+    border-radius:9px; padding:9px 14px; font-size:13px; cursor:pointer; transition:.12s;
+  }
+  button:hover{ background:#1c2336; border-color:#3c4a6e; }
+  button.primary{ background:linear-gradient(180deg,#1d6fb8,#16527f); border-color:#2f8fd0; }
+  button.primary:hover{ filter:brightness(1.12); }
+  button.ghost{ background:transparent; }
+  .status{ color:var(--muted); font-size:12.5px; margin-left:auto; }
+  .status.ok{ color:var(--ok); } .status.warn{ color:var(--warn); }
+
+  .panel{ background:var(--panel); border:1px solid var(--edge); border-radius:14px; padding:16px 18px; margin-bottom:18px; }
+  .panel h2{ font-size:13px; color:var(--muted); margin:0 0 12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+
+  /* ---- flow lane ---- */
+  .lane{ display:flex; align-items:stretch; gap:0; flex-wrap:wrap; row-gap:14px; min-height:108px; }
+  .node{ display:flex; align-items:center; }
+  .cap{
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    min-width:64px; height:92px; border-radius:12px; border:1px dashed var(--edge);
+    color:var(--muted); font-size:12px; background:#0a0c14;
+  }
+  .arrow{ width:26px; text-align:center; color:#46507a; font-size:20px; user-select:none; }
+  .block{
+    position:relative; width:150px; height:92px; border-radius:12px; cursor:grab;
+    background:linear-gradient(180deg, var(--panel2), #0c0f19);
+    border:1px solid var(--edge); border-left:4px solid var(--c, var(--accent));
+    padding:10px 12px; display:flex; flex-direction:column; gap:3px; transition:transform .08s, box-shadow .12s;
+    box-shadow:0 0 0 rgba(0,0,0,0);
+  }
+  .block:hover{ box-shadow:0 6px 18px rgba(0,0,0,.45), 0 0 16px -6px var(--c); }
+  .block.dragging{ opacity:.35; }
+  .block .idx{ font-size:11px; color:var(--muted); }
+  .block .nm{ font-size:15px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .block .meta{ font-size:11px; color:var(--muted); display:flex; justify-content:space-between; margin-top:auto; }
+  .block .stars{ color:var(--c, var(--accent)); letter-spacing:1px; }
+  .block .rm{
+    position:absolute; top:6px; right:7px; width:18px; height:18px; line-height:16px; text-align:center;
+    border-radius:50%; background:#1c2336; border:1px solid var(--edge); color:var(--muted);
+    font-size:12px; cursor:pointer;
+  }
+  .block .rm:hover{ background:#a3344a; color:#fff; border-color:#c4506a; }
+  .lane.dropok{ outline:2px dashed #2f8fd0; outline-offset:6px; border-radius:12px; }
+
+  /* ---- palette ---- */
+  .palette{ display:flex; gap:12px; flex-wrap:wrap; }
+  .pchip{
+    width:160px; border-radius:12px; background:#0c0f19; border:1px solid var(--edge);
+    border-top:3px solid var(--c, var(--accent)); padding:10px 12px; cursor:grab;
+  }
+  .pchip .nm{ font-size:14px; font-weight:600; }
+  .pchip .meta{ font-size:11px; color:var(--muted); display:flex; justify-content:space-between; margin-top:6px; align-items:center; }
+  .pchip .add{ font-size:11px; padding:3px 9px; border-radius:7px; }
+
+  /* ---- preview ---- */
+  .preview{ font-family:Consolas,"Cascadia Code",monospace; font-size:13px; background:#05060b;
+    border:1px solid var(--edge); border-radius:10px; padding:12px 14px; color:#cfe6ff; white-space:pre-wrap; word-break:break-all; }
+  .hint{ font-size:12px; color:var(--muted); margin-top:8px; }
+  .hint.warn{ color:var(--warn); }
+  textarea{ width:100%; height:120px; background:#05060b; color:#cfe6ff; border:1px solid var(--edge);
+    border-radius:10px; padding:10px; font-family:Consolas,monospace; font-size:12px; }
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start; }
+  .row>div{ flex:1 1 320px; }
+  details{ margin-top:10px; } summary{ cursor:pointer; color:var(--muted); font-size:12.5px; }
+  code{ background:#111a2e; padding:1px 5px; border-radius:5px; color:#bcd; }
+</style>
+</head>
+<body>
+  <h1>MaruBatsu ボス順エディタ</h1>
+  <div class="sub">ブロックをドラッグして 1ラン のボス出現順を組み替えます。保存すると <code>assets/game_config.json</code> の <code>"bossOrder"</code> に反映されます（コメントや他設定は保持）。</div>
+
+  <div class="bar">
+    <button class="primary" id="btnOpen">⤓ game_config.json を開く</button>
+    <button id="btnSave">💾 保存</button>
+    <button class="ghost" id="btnReset">↺ 既定の順に戻す</button>
+    <button class="ghost" id="btnClear">✕ 全消去</button>
+    <span class="status" id="status">未読込（既定の順を表示中）</span>
+  </div>
+
+  <div class="panel">
+    <h2>ラン進行フロー（ドラッグで並べ替え／× で除外）</h2>
+    <div class="lane" id="lane"></div>
+    <div class="hint" id="flowHint"></div>
+  </div>
+
+  <div class="panel">
+    <h2>使えるボス（カタログ）— ＋ または フローへドラッグで追加</h2>
+    <div class="palette" id="palette"></div>
+  </div>
+
+  <div class="row">
+    <div class="panel">
+      <h2>出力プレビュー（bossOrder）</h2>
+      <div class="preview" id="preview"></div>
+      <div class="hint" id="valid"></div>
+      <button class="ghost" id="btnCopy" style="margin-top:10px;">⧉ この行をコピー</button>
+    </div>
+    <div class="panel">
+      <h2>手動読み込み（ファイルを開けない環境用）</h2>
+      <div class="hint">game_config.json の中身を貼り付けて「取り込む」を押すと現在の順を読み取れます。保存は全文をダウンロードします。</div>
+      <textarea id="paste" placeholder="ここに game_config.json を貼り付け…"></textarea>
+      <div style="margin-top:8px; display:flex; gap:10px;">
+        <button id="btnImport">取り込む</button>
+        <input type="file" id="file" accept=".json,application/json" style="font-size:12px;color:var(--muted);" />
+      </div>
+    </div>
+  </div>
+
+  <details>
+    <summary>使い方とメモ</summary>
+    <div class="hint" style="margin-top:8px; line-height:1.7;">
+      ・対応ブラウザ（Chrome/Edge）では「開く」から直接 <code>assets/game_config.json</code> を読み書きできます。<br>
+      ・それ以外の環境では、右下にファイルを貼り付け→「取り込む」で現在順を読み、「保存」で全文をダウンロードして既存ファイルに上書きしてください。<br>
+      ・順は<strong>重複可</strong>（同じボスを2回出すなど）。空にすると、ゲーム側はカタログ定義順で動作します。<br>
+      ・反映タイミング：ゲームは<strong>タイトル画面に戻るたび</strong>に再読込します。<br>
+      ・ボスを新規追加した場合は、C++ 側 <code>boss_roster.cpp</code> のカタログと、このツール先頭の <code>CATALOG</code> の両方に同じ <code>code</code> で追記してください。<br>
+      ・注意：ラン途中のセーブはボス番号(index)で復元するため、順を変えると再開時の対戦ボスが変わります（設計時の編集を想定）。
+    </div>
+  </details>
+
+<script>
+// ===== カタログ（C++ boss_roster.cpp の g_Catalog と code を一致させること） =====
+const CATALOG = [
+  { code:"ice",     name:"氷盤の支配者",   stars:1, color:"#5bd6ff" },
+  { code:"mirror",  name:"鏡写しの番人",   stars:2, color:"#7fe0c8" },
+  { code:"spiral",  name:"螺旋の女王",     stars:2, color:"#c47bff" },
+  { code:"chain",   name:"連鎖の鼓動",     stars:3, color:"#6ee787" },
+  { code:"time",    name:"時喰らい",       stars:3, color:"#ffcf5b" },
+  { code:"gravity", name:"重力の専制者",   stars:4, color:"#ff7b6b" },
+  { code:"final",   name:"刻まれし者",     stars:5, color:"#d24bff" },
+];
+const DEFAULT_ORDER = CATALOG.map(c => c.code);
+const byCode = Object.fromEntries(CATALOG.map(c => [c.code, c]));
+
+// ===== 状態 =====
+let order = DEFAULT_ORDER.slice();   // ボスコード名の並び（重複可）
+let originalText = "";                 // 読み込んだ game_config.json の全文（保存時に保持）
+let fileHandle = null;                 // File System Access API のハンドル
+let drag = null;                       // ドラッグ中の情報
+
+const $ = id => document.getElementById(id);
+const stars = n => "★".repeat(n) + "☆".repeat(Math.max(0,5-n));
+
+function setStatus(msg, cls){ const s=$("status"); s.textContent=msg; s.className="status"+(cls?(" "+cls):""); }
+
+// ===== 描画 =====
+function render(){
+  // --- フロー ---
+  const lane = $("lane");
+  lane.innerHTML = "";
+  const start = document.createElement("div");
+  start.className = "node";
+  start.innerHTML = `<div class="cap">▶<br>START</div><div class="arrow">→</div>`;
+  lane.appendChild(start);
+
+  order.forEach((code, i) => {
+    const c = byCode[code] || { code, name:code+"(不明)", stars:0, color:"#888" };
+    const node = document.createElement("div");
+    node.className = "node";
+
+    const b = document.createElement("div");
+    b.className = "block";
+    b.style.setProperty("--c", c.color);
+    b.draggable = true;
+    b.dataset.index = i;
+    b.innerHTML = `
+      <div class="rm" title="除外">✕</div>
+      <div class="idx">戦 ${i+1}</div>
+      <div class="nm">${c.name}</div>
+      <div class="meta"><span>${c.code}</span><span class="stars">${stars(c.stars)}</span></div>`;
+    b.querySelector(".rm").addEventListener("click", e => { e.stopPropagation(); order.splice(i,1); render(); });
+
+    b.addEventListener("dragstart", e => { drag={from:"flow", index:i}; b.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; });
+    b.addEventListener("dragend",   () => { drag=null; b.classList.remove("dragging"); lane.classList.remove("dropok"); });
+
+    node.appendChild(b);
+    const ar = document.createElement("div");
+    ar.className = "arrow"; ar.textContent = "→";
+    node.appendChild(ar);
+    lane.appendChild(node);
+  });
+
+  const end = document.createElement("div");
+  end.className = "node";
+  end.innerHTML = `<div class="cap" style="border-color:#2f6f4f;color:#6ee787;">★<br>CLEAR</div>`;
+  lane.appendChild(end);
+
+  // --- パレット ---
+  const pal = $("palette");
+  pal.innerHTML = "";
+  CATALOG.forEach(c => {
+    const chip = document.createElement("div");
+    chip.className = "pchip";
+    chip.style.setProperty("--c", c.color);
+    chip.draggable = true;
+    chip.innerHTML = `
+      <div class="nm">${c.name}</div>
+      <div class="meta"><span class="stars" style="color:${c.color}">${stars(c.stars)}</span>
+        <button class="add">＋ 追加</button></div>`;
+    chip.querySelector(".add").addEventListener("click", e => { e.stopPropagation(); order.push(c.code); render(); });
+    chip.addEventListener("dragstart", e => { drag={from:"palette", code:c.code}; e.dataTransfer.effectAllowed="copy"; });
+    chip.addEventListener("dragend",   () => { drag=null; $("lane").classList.remove("dropok"); });
+    pal.appendChild(chip);
+  });
+
+  // --- プレビュー & 検証 ---
+  const arr = "[ " + order.map(k => `"${k}"`).join(", ") + " ]";
+  $("preview").textContent = `"bossOrder": ${arr}`;
+  $("flowHint").textContent = `全 ${order.length} 戦`;
+
+  const v = $("valid");
+  if(order.length === 0){ v.textContent = "⚠ 空です。ゲーム側はカタログ定義順で動作します。"; v.className="hint warn"; }
+  else if(order[order.length-1] !== "final"){ v.textContent = "ヒント: 通常はラスボス（final）を最後に置きます。"; v.className="hint warn"; }
+  else { v.textContent = "OK"; v.className="hint"; }
+}
+
+// ===== フローのドラッグ＆ドロップ（並べ替え／追加） =====
+function afterIndex(lane, x){
+  const blocks = [...lane.querySelectorAll(".block:not(.dragging)")];
+  for(const el of blocks){
+    const box = el.getBoundingClientRect();
+    if(x < box.left + box.width/2) return Number(el.dataset.index);
+  }
+  return order.length;
+}
+(function wireLane(){
+  const lane = $("lane");
+  lane.addEventListener("dragover", e => { if(!drag) return; e.preventDefault(); e.dataTransfer.dropEffect = drag.from==="palette"?"copy":"move"; lane.classList.add("dropok"); });
+  lane.addEventListener("dragleave", e => { if(!lane.contains(e.relatedTarget)) lane.classList.remove("dropok"); });
+  lane.addEventListener("drop", e => {
+    if(!drag) return; e.preventDefault(); lane.classList.remove("dropok");
+    let idx = afterIndex(lane, e.clientX);
+    if(drag.from === "flow"){
+      const [moved] = order.splice(drag.index, 1);
+      if(drag.index < idx) idx--;
+      order.splice(idx, 0, moved);
+    } else {
+      order.splice(idx, 0, drag.code);
+    }
+    drag = null; render();
+  });
+})();
+
+// ===== JSONC ヘルパ =====
+function stripJsonComments(text){
+  let out="", inStr=false, esc=false, inLine=false, inBlock=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i], n=text[i+1];
+    if(inLine){ if(c==="\n"){ inLine=false; out+=c; } continue; }
+    if(inBlock){ if(c==="*"&&n==="/"){ inBlock=false; i++; } continue; }
+    if(inStr){ out+=c; if(esc) esc=false; else if(c==="\\") esc=true; else if(c==='"') inStr=false; continue; }
+    if(c==='"'){ inStr=true; out+=c; continue; }
+    if(c==="/"&&n==="/"){ inLine=true; i++; continue; }
+    if(c==="/"&&n==="*"){ inBlock=true; i++; continue; }
+    out+=c;
+  }
+  return out;
+}
+function parseConfig(text){
+  const cleaned = stripJsonComments(text).replace(/,(\s*[}\]])/g, "$1"); // 末尾カンマ除去
+  return JSON.parse(cleaned);
+}
+function applyLoaded(text){
+  let obj;
+  try { obj = parseConfig(text); }
+  catch(err){ setStatus("解析失敗: " + err.message, "warn"); return false; }
+  if(Array.isArray(obj.bossOrder) && obj.bossOrder.length){
+    order = obj.bossOrder.map(String);
+  } else {
+    order = DEFAULT_ORDER.slice();
+    setStatus("bossOrder が無いため既定順を表示（保存で追加されます）", "warn");
+  }
+  originalText = text;
+  render();
+  return true;
+}
+function buildArrayText(){ return "[ " + order.map(k => `"${k}"`).join(", ") + " ]"; }
+function replaceBossOrder(src){
+  const arr = buildArrayText();
+  const re = /("bossOrder"\s*:\s*)\[[^\]]*\]/;
+  if(re.test(src)) return src.replace(re, `$1${arr}`);
+  const i = src.indexOf("{");
+  if(i < 0) return src;
+  return src.slice(0, i+1) + `\n  "bossOrder": ${arr},` + src.slice(i+1);
+}
+function downloadText(name, text){
+  const blob = new Blob([text], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ===== ボタン =====
+$("btnOpen").addEventListener("click", async () => {
+  if(window.showOpenFilePicker){
+    try{
+      const [h] = await window.showOpenFilePicker({ types:[{description:"JSON", accept:{"application/json":[".json"]}}] });
+      fileHandle = h;
+      const f = await h.getFile();
+      const text = await f.text();
+      if(applyLoaded(text)) setStatus("読込: " + f.name + "（直接保存できます）", "ok");
+    }catch(err){ if(err && err.name!=="AbortError") setStatus("開けません: " + err.message + " → 右下の手動読み込みをご利用ください", "warn"); }
+  } else {
+    setStatus("このブラウザは直接オープン非対応 → 右下の手動読み込みをご利用ください", "warn");
+    $("file").click();
+  }
+});
+
+$("btnSave").addEventListener("click", async () => {
+  if(!originalText){
+    // 全文が無い → bossOrder だけの最小ファイルを出すと他設定を失うため、行コピーを促す。
+    setStatus("先に game_config.json を読み込んでください（または下の『この行をコピー』）", "warn");
+    return;
+  }
+  const out = replaceBossOrder(originalText);
+  originalText = out;
+  if(fileHandle && fileHandle.createWritable){
+    try{
+      const w = await fileHandle.createWritable();
+      await w.write(out); await w.close();
+      setStatus("保存しました（assets/game_config.json）", "ok");
+      return;
+    }catch(err){ setStatus("直接保存失敗: " + err.message + " → ダウンロードします", "warn"); }
+  }
+  downloadText("game_config.json", out);
+  setStatus("ダウンロードしました。既存の game_config.json に上書きしてください", "ok");
+});
+
+$("btnReset").addEventListener("click", () => { order = DEFAULT_ORDER.slice(); render(); });
+$("btnClear").addEventListener("click", () => { order = []; render(); });
+$("btnCopy").addEventListener("click", async () => {
+  const line = `"bossOrder": ${buildArrayText()},`;
+  try{ await navigator.clipboard.writeText(line); setStatus("コピーしました", "ok"); }
+  catch{ setStatus("コピー不可。プレビューを手動選択してください", "warn"); }
+});
+$("btnImport").addEventListener("click", () => {
+  const t = $("paste").value.trim();
+  if(!t){ setStatus("貼り付け欄が空です", "warn"); return; }
+  if(applyLoaded(t)) setStatus("取り込みました（保存で全文をダウンロード）", "ok");
+});
+$("file").addEventListener("change", async e => {
+  const f = e.target.files[0]; if(!f) return;
+  const text = await f.text();
+  if(applyLoaded(text)) setStatus("読込: " + f.name + "（保存で全文をダウンロード）", "ok");
+});
+
+render();
+</script>
+</body>
+</html>

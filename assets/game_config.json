@@ -6,6 +6,13 @@
   //    (ゲームを再起動せずに調整を反映できる)
   // ================================================
 
+  // --- ボス出現順 (1ラン=この並び順に対戦) ---
+  //  値は各ボスの安定ID(コード名)。先頭から順に出現する。
+  //  利用可能: "ice" "mirror" "spiral" "chain" "time" "gravity" "final"
+  //  GUIで組み替え可: tools/boss_order_editor.html (ドラッグで並べ替え)
+  //  空/未指定/全て不正なら、内部のカタログ定義順で動作する。
+  "bossOrder": [ "ice", "mirror", "spiral", "chain", "time", "gravity", "final" ],
+
   // --- 基本ルール ---
   "rules": {
     "turnTimeSeconds":    180.0,   // 1ターンの思考時間(秒)

@@ -23,7 +23,14 @@
 //======================================
 namespace BossRoster
 {
-    /** @brief ロスターに登録されているボスの総数 (=1ランの戦数) */
+    /**
+     * @brief  ボス出現順を game_config.json の "bossOrder" から再構築する
+     * @detail Config::Reload() の直後に呼ぶ。未指定/空/全て不正なら
+     *         カタログ定義順へフォールバックする。
+     */
+    void Reload();
+
+    /** @brief 現在の出現順におけるボス総数 (=1ランの戦数) */
     int Count();
 
     /**

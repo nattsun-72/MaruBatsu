@@ -8,6 +8,7 @@
 #include "title.h"
 #include "scene.h"
 #include "run_state.h"
+#include "boss/boss_roster.h"
 #include "render_primitives.h"
 #include "text_draw.h"
 #include "config.h"
@@ -107,6 +108,8 @@ void Title_Initialize()
     // 設定ファイルを再読込 (タイトルへ戻るたびに調整が反映される)。
     // 失敗時はタイトルに警告を表示し、調整が効かない原因に気づけるようにする。
     g_ConfigOk = Config::Reload();
+    // 設定反映後にボス出現順を再構築する ("bossOrder" の編集を反映)。
+    BossRoster::Reload();
 
     // 描画モジュールを初期化し、点滅タイマーをリセット
     Prim::Initialize();

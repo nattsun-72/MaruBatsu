@@ -15,7 +15,7 @@ TwoHandsAbility::TwoHandsAbility()
 {
     name        = "二手打ち";
     description = "1ターンに2回\n連続で配置できる";
-    rarity      = Rarity::Epic;   // 着手数倍化は決定力が高すぎるためエピックに引き上げ
+    rarity      = Rarity::Rare;   // 企画書準拠(レア)
     unique      = true;   // 着手数は固定で、2個目を取得しても増えないため一度限り
     doublePlacementCount = Config::GetInt("abilities.twoHands.placementCount", 2);
 }

@@ -17,7 +17,7 @@
 CornerDominionAbility::CornerDominionAbility()
 {
     name            = "隅取り";
-    rarity          = Rarity::Epic;
+    rarity          = Rarity::Rare;   // 勝利条件追加系はレア帯に統一
     unique          = true;   // 勝利条件の追加は1つで完結するため一度限り
     cornerThreshold = Config::GetInt("abilities.cornerDominion.threshold", 3);
 

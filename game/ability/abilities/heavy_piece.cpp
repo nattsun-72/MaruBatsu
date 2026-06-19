@@ -16,7 +16,7 @@ HeavyPieceAbility::HeavyPieceAbility()
 {
     name        = "重駒";
     description = "自駒が重くなり\n滑り・落下を受けない";
-    rarity      = Rarity::Epic;
+    rarity      = Rarity::Rare;   // 企画書準拠(レア)
     unique      = true;   // 全自駒に効くため2個目は無意味
 }
 

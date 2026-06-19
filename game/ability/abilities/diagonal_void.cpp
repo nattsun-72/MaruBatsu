@@ -17,7 +17,7 @@ DiagonalVoidAbility::DiagonalVoidAbility()
 {
     name        = "対角線無効";
     description = "相手の斜めラインを\n勝利と認めない";
-    rarity      = Rarity::Rare;
+    rarity      = Rarity::Epic;   // 企画書準拠(エピック)
     unique      = true;   // 相手の斜めは1つで完全に無効化されるため一度限り
 }
 

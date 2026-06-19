@@ -172,6 +172,15 @@
     <ClCompile Include="game\ability\abilities\sands_of_time.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
+    <ClCompile Include="game\ability\abilities\composure.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\rapid_thought.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\impatience.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
     <ClCompile Include="game\ability\abilities\spiral_shard.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
@@ -403,6 +412,15 @@
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\sands_of_time.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\composure.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\rapid_thought.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\impatience.h">
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
     <ClInclude Include="game\ability\abilities\spiral_shard.h">

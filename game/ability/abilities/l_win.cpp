@@ -16,7 +16,7 @@ LWinAbility::LWinAbility()
 {
     name        = "L字勝利";
     description = "2×2の3マス支配\n(L字)でも勝利";
-    rarity      = Rarity::Epic;
+    rarity      = Rarity::Rare;   // 企画書準拠(レア)
     unique      = true;   // 勝利条件の追加は1つで完結するため一度限り
 }
 

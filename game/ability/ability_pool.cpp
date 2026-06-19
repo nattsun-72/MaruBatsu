@@ -10,6 +10,7 @@
 #include "ability/abilities/absolute_victory.h"
 #include "ability/abilities/board_expand.h"
 #include "ability/abilities/chain_shard.h"
+#include "ability/abilities/composure.h"
 #include "ability/abilities/contemplation.h"
 #include "ability/abilities/corner_dominion.h"
 #include "ability/abilities/diagonal_void.h"
@@ -17,8 +18,10 @@
 #include "ability/abilities/heavy_piece.h"
 #include "ability/abilities/ice_tile.h"
 #include "ability/abilities/immortal.h"
+#include "ability/abilities/impatience.h"
 #include "ability/abilities/l_win.h"
 #include "ability/abilities/margin.h"
+#include "ability/abilities/rapid_thought.h"
 #include "ability/abilities/reflection.h"
 #include "ability/abilities/sands_of_time.h"
 #include "ability/abilities/spiral_shard.h"
@@ -73,22 +76,25 @@ namespace AbilityPool
         //    必ずこの一覧に追加すること。
         return {
             std::make_shared<ContemplationAbility>(),  // 熟考 (C)
-            std::make_shared<MarginAbility>(),         // 余裕 (R)
+            std::make_shared<ComposureAbility>(),      // 平静 (C)
+            std::make_shared<MarginAbility>(),         // 余裕 (C)
             std::make_shared<FocusAbility>(),          // 集中 (C/任意発動)
+            std::make_shared<RapidThoughtAbility>(),   // 倍速思考 (C/任意発動)
             std::make_shared<IceTileAbility>(),        // 氷駒 (R)
             std::make_shared<BoardExpandAbility>(),    // 盤面拡張 (E/一度限り)
-            std::make_shared<TwoHandsAbility>(),       // 二手打ち (E/一度限り)
+            std::make_shared<TwoHandsAbility>(),       // 二手打ち (R/一度限り)
             std::make_shared<SpiralShardAbility>(),    // 螺旋の欠片 (R/任意発動)
             std::make_shared<ChainShardAbility>(),     // 連鎖の欠片 (R/任意発動)
-            std::make_shared<HeavyPieceAbility>(),     // 重駒 (E/一度限り)
-            std::make_shared<LWinAbility>(),           // L字勝利 (E/一度限り)
-            std::make_shared<DiagonalVoidAbility>(),   // 対角線無効 (R/一度限り)
+            std::make_shared<HeavyPieceAbility>(),     // 重駒 (R/一度限り)
+            std::make_shared<LWinAbility>(),           // L字勝利 (R/一度限り)
+            std::make_shared<DiagonalVoidAbility>(),   // 対角線無効 (E/一度限り)
             std::make_shared<ImmortalAbility>(),       // 不死 (L/一度限り)
             std::make_shared<SandsOfTimeAbility>(),    // 時の砂 (R/任意発動)
             std::make_shared<ReflectionAbility>(),     // 鏡映 (E/一度限り)
-            std::make_shared<CornerDominionAbility>(), // 隅取り (E/一度限り)
+            std::make_shared<CornerDominionAbility>(), // 隅取り (R/一度限り)
             std::make_shared<TimeStopAbility>(),       // 時間停止 (L/一度限り)
             std::make_shared<AbsoluteVictoryAbility>(),// 絶対勝利 (L/一度限り)
+            std::make_shared<ImpatienceAbility>(),     // 焦燥 (呪い/一度限り)
         };
     }
 

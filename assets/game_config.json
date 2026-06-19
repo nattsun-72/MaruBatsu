@@ -30,14 +30,17 @@
     "common":    50,
     "rare":      30,
     "epic":      16,
-    "legendary": 4
+    "legendary": 4,
+    "curse":     8     // 呪い: 0で抽選プールから除外。ハイリスク枠として少量出現
   },
 
   // --- プレイヤーアビリティ ---
   "abilities": {
     "contemplation": { "bonusSeconds": 30.0 },          // 熟考
+    "composure":     { "bonusSeconds": 15.0 },          // 平静
     "margin":        { "bonusSeconds": 60.0 },          // 余裕
     "focus":         { "charges": 3, "bonusSeconds": 120.0 },  // 集中
+    "rapidThought":  { "charges": 1, "grantSeconds": 999.0 },  // 倍速思考
     "twoHands":      { "placementCount": 2 },           // 二手打ち
     "boardExpand":   { "width": 4, "height": 4 },       // 盤面拡張
     "spiralShard":   { "charges": 2 },                  // 螺旋の欠片
@@ -45,7 +48,8 @@
     "immortal":      { "charges": 2 },                  // 不死
     "sandsOfTime":   { "charges": 2, "refillSeconds": 180.0 }, // 時の砂
     "timeStop":      { "seconds": 9999.0 },             // 時間停止
-    "cornerDominion":{ "threshold": 3 }                 // 隅取り: 勝利に必要な支配隅数(3 or 4)
+    "cornerDominion":{ "threshold": 3 },                // 隅取り: 勝利に必要な支配隅数(3 or 4)
+    "impatience":    { "placementCount": 2, "timeFactor": 0.5 } // 焦燥(呪い): 着手数/時間倍率
   },
 
   // --- ボスギミック ---

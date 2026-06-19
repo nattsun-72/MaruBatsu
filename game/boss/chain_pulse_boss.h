@@ -20,7 +20,7 @@
 //======================================
 /**
  * @class  ChainPulseBoss
- * @brief  自動拡張ギミックを持つ予定のボス (現状スタブ)
+ * @brief  自動拡張ギミックを持つボス
  */
 class ChainPulseBoss : public Boss
 {

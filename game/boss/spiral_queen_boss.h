@@ -20,7 +20,7 @@
 //======================================
 /**
  * @class  SpiralQueenBoss
- * @brief  盤面回転ギミックを持つ予定のボス (現状スタブ)
+ * @brief  盤面回転ギミックを持つボス
  */
 class SpiralQueenBoss : public Boss
 {

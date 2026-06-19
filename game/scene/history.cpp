@@ -84,6 +84,10 @@ namespace
         char resultPart[64];
         if (r.cleared)
             std::snprintf(resultPart, sizeof(resultPart), "クリア");
+        else if (r.wasDraw)
+            std::snprintf(resultPart, sizeof(resultPart),
+                          r.defeatedByBoss.empty() ? "引き分け" : "引分(%s)",
+                          r.defeatedByBoss.c_str());
         else if (!r.defeatedByBoss.empty())
             std::snprintf(resultPart, sizeof(resultPart), "敗北(%s)",
                           r.defeatedByBoss.c_str());
@@ -188,7 +192,8 @@ void History_Draw()
 
             char row[160];
             FormatRow(g_History[i], row, sizeof(row));
-            const DirectX::XMFLOAT4 col = g_History[i].cleared ? COLOR_WIN : COLOR_LOSE;
+            const DirectX::XMFLOAT4 col = g_History[i].cleared ? COLOR_WIN
+                                        : (g_History[i].wasDraw ? COLOR_HINT : COLOR_LOSE);
             Text::Draw(LIST_X, y, row, TEXT_ROW, col);
         }
     }

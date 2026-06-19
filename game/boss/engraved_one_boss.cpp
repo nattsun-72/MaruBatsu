@@ -1,6 +1,6 @@
 /****************************************
  * @file   engraved_one_boss.cpp
- * @brief  ボス5(ラスボス): 刻まれし者 実装 (W1スタブ)
+ * @brief  ボス5(ラスボス): 刻まれし者 実装
  * @author Natsume Shidara
  * @date   2026/06/05
  ****************************************/
@@ -14,7 +14,7 @@
 EngravedOneBoss::EngravedOneBoss()
 {
     name        = "刻まれし者";
-    description = "毎ターン、過去の支配者たちの力を振るう";
+    description = "過去の支配者たちの力を3つ同時に振るう";
     difficulty  = 5;
     // テーマ色: 複合の深い紫紺
     bgR = 0.10f; bgG = 0.05f; bgB = 0.12f;
@@ -25,7 +25,8 @@ EngravedOneBoss::EngravedOneBoss()
 //======================================
 std::vector<std::shared_ptr<Ability>> EngravedOneBoss::GetBossAbilities()
 {
-    // ボス側ギミック: 毎ターン「氷盤/螺旋/連鎖/重力」を切り替えて振るう複合体
+    // ボス側ギミック: 設置のたび 設置系(氷盤/連鎖)+構造系(回転)+駒強化系(重力)
+    // の3カテゴリを同時に全発動する複合体
     return { std::make_shared<BossEngravedAbility>() };
 }
 

@@ -34,10 +34,11 @@ struct RunResult
     int         bossTotal      = 0;      // ボス総数 (例 5)
     double      timeSeconds    = 0.0;    // ランの総プレイ時間(秒)
     int         turns          = 0;      // ランの総ターン数
-    std::string defeatedByBoss;          // 敗北時に倒されたボス名 (クリア時は空)
+    std::string defeatedByBoss;          // 敗北/引分時に対戦していたボス名 (クリア時は空)
     std::string dateTime;                // 終了日時 "YYYY/MM/DD HH:MM"
     std::vector<std::string> abilityNames; // 取得アビリティ名(取得順)
     bool        legendaryUnlocked = false; // このクリアでレジェンダリーを初解放したか
+    bool        wasDraw         = false;  // 敗北のうち引き分け終了だったか (cleared=false時のみ意味を持つ)
 };
 
 //======================================
@@ -111,9 +112,11 @@ namespace RunState
     /**
      * @brief  ラン終了時の戦績を確定して保持する
      * @param  cleared        クリア(全撃破)なら true
-     * @param  defeatedByBoss 敗北時に倒されたボス名 (クリア時は空文字)
+     * @param  defeatedByBoss 敗北/引分時に対戦していたボス名 (クリア時は空文字)
+     * @param  wasDraw        引き分け終了なら true (cleared=false のときのみ意味を持つ)
      */
-    void             CaptureResult(bool cleared, const std::string& defeatedByBoss);
+    void             CaptureResult(bool cleared, const std::string& defeatedByBoss,
+                                   bool wasDraw = false);
     /** @brief 直近に確定した戦績を取得 (リザルト画面が参照) */
     const RunResult& LastResult();
 

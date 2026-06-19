@@ -16,7 +16,7 @@
 AbsoluteVictoryAbility::AbsoluteVictoryAbility()
 {
     name        = "絶対勝利";
-    description = "ライン達成時、\n強制的に勝利する";
+    description = "ライン達成は必ず勝利\n引き分けも勝利になる";
     rarity      = Rarity::Legendary;
     unique      = true;   // 確定勝利は1つで完結するため一度限り
 }
@@ -26,10 +26,21 @@ AbsoluteVictoryAbility::AbsoluteVictoryAbility()
 //======================================
 bool AbsoluteVictoryAbility::Check(const Board& board, Piece player)
 {
-    // 自陣が標準の3並びを達成していれば、他の勝利条件改変に依らず必ず勝利。
-    if (player == targetSide && WinCheck::HasLine(board, player, 3))
+    if (player == targetSide)
     {
-        return true;
+        // 1) 標準の3並び達成 → 勝利条件改変(抑制)に依らず必ず勝利。
+        //    チェイン先(対角線無効などの抑制)を経由せず直接判定するため、
+        //    相手が自陣の勝利条件を弱める効果を持っていても覆せる。
+        if (WinCheck::HasLine(board, player, 3)) return true;
+
+        // 2) 盤面が満杯で、どちらも決着ラインを持たない(=本来は引き分け)場合も
+        //    勝利をもぎ取る。相手がラインを持つなら本来そちらが先に成立して
+        //    いるため、ここでは奪わない。これにより「引き分け＝負け進行」を
+        //    覆し、レジェンダリーらしい決定力を与える。
+        if (board.IsFull() && !WinCheck::HasLine(board, Opponent(player), 3))
+        {
+            return true;
+        }
     }
     // それ以外は既存の勝利条件へ委譲する
     return chained ? chained->Check(board, player) : false;

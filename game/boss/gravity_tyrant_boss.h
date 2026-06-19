@@ -4,9 +4,8 @@
  * @author Natsume Shidara
  * @date   2026/06/05
  *
- * 重い駒(駒強化)ギミックを持つ予定のボス。難易度★4。
- * W1第1増分ではギミック未実装のスタブ(通常〇×として成立)。
- * 駒強化ギミックは IPieceModifier 系として後続週で本実装する。
+ * 重力(全駒落下)ギミックを持つボス。難易度★4。
+ * 設置のたび全駒を下端へ落とす BossGravity を登録する。
  ****************************************/
 #ifndef GRAVITY_TYRANT_BOSS_H
 #define GRAVITY_TYRANT_BOSS_H
@@ -21,7 +20,7 @@
 //======================================
 /**
  * @class  GravityTyrantBoss
- * @brief  重い駒(駒強化)ギミックを持つ予定のボス (現状スタブ)
+ * @brief  重力(全駒落下)ギミックを持つボス
  */
 class GravityTyrantBoss : public Boss
 {
@@ -35,9 +34,9 @@ public:
     //======================================
     // Boss インターフェース実装
     //======================================
-    /** @brief ボス戦中に登録するアビリティ群 (W1は空=通常〇×) */
+    /** @brief ボス戦中に登録するアビリティ群 (重力ギミック) */
     std::vector<std::shared_ptr<Ability>> GetBossAbilities() override;
-    /** @brief 撃破報酬として渡すアビリティ (暫定) */
+    /** @brief 撃破報酬として渡すアビリティ (重駒) */
     std::shared_ptr<Ability> GetRewardAbility() override;
 };
 

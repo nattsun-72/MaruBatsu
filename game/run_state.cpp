@@ -95,7 +95,8 @@ namespace
             if (i) abil += ",";
             abil += r.abilityNames[i];
         }
-        // TAB区切り: 日時 \t cleared \t 撃破 \t 総数 \t 秒 \t ターン \t 敗北ボス \t アビリティ
+        // TAB区切り: 日時 \t cleared \t 撃破 \t 総数 \t 秒 \t ターン \t 敗北ボス \t アビリティ \t 引分
+        // ※ 引分フラグは9列目として末尾追加。旧8列の履歴とも前方互換(欠落時は false 扱い)。
         ofs << r.dateTime               << "\t"
             << (r.cleared ? 1 : 0)      << "\t"
             << r.bossesDefeated         << "\t"
@@ -103,7 +104,8 @@ namespace
             << static_cast<long long>(r.timeSeconds) << "\t"
             << r.turns                  << "\t"
             << r.defeatedByBoss         << "\t"
-            << abil                     << "\n";
+            << abil                     << "\t"
+            << (r.wasDraw ? 1 : 0)      << "\n";
     }
 }
 
@@ -148,9 +150,10 @@ namespace RunState
     double RunTime()             { return g_RunTime; }
     int    RunTurns()            { return g_RunTurns; }
 
-    void CaptureResult(bool cleared, const std::string& defeatedByBoss)
+    void CaptureResult(bool cleared, const std::string& defeatedByBoss, bool wasDraw)
     {
         g_LastResult.cleared        = cleared;
+        g_LastResult.wasDraw        = (!cleared && wasDraw);   // クリア時は引分扱いしない
         g_LastResult.bossesDefeated = g_BossIndex;             // クリア時は BossCount に一致
         g_LastResult.bossTotal      = BossRoster::Count();
         g_LastResult.timeSeconds    = g_RunTime;
@@ -203,6 +206,8 @@ namespace RunState
             r.dateTime       = f[0];
             r.defeatedByBoss = f[6];
             if (!f[7].empty()) r.abilityNames = Split(f[7], ',');
+            // 9列目(引分フラグ)は旧履歴に無いため、存在する場合のみ読む。
+            if (f.size() >= 9) { try { r.wasDraw = (std::stoi(f[8]) != 0); } catch (...) {} }
 
             all.push_back(std::move(r));
         }

@@ -166,8 +166,13 @@ void Title_Update(double elapsed_time)
         if (wantContinue)
         {
             SoundManager_PlaySE(SOUND_SE_DECIDE);
-            // 復元失敗時は安全側で新規ランにフォールバック
-            if (!RunState::LoadRun()) RunState::ResetRun();
+            // 復元失敗時は安全側で新規ランにフォールバック。
+            // 破損セーブはここで削除し、「つづきから」が再表示され続けるのを防ぐ。
+            if (!RunState::LoadRun())
+            {
+                RunState::ClearSave();
+                RunState::ResetRun();
+            }
             Scene_Change(Scene::GAME);
         }
         else if (wantNew)

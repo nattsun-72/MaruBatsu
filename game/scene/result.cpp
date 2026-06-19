@@ -168,9 +168,11 @@ void Result_Draw()
     // 背景
     Prim::DrawRect(0, 0, screenW, screenH, COLOR_BG);
 
-    /*--- 結果見出し ---*/
-    const char* head = r.cleared ? "ラン クリア！" : "ラン 敗北";
-    const DirectX::XMFLOAT4 headColor = r.cleared ? COLOR_WIN : COLOR_LOSE;
+    /*--- 結果見出し (クリア / 引き分け / 敗北 を区別) ---*/
+    const char* head = r.cleared ? "ラン クリア！"
+                                 : (r.wasDraw ? "ラン 引き分け" : "ラン 敗北");
+    const DirectX::XMFLOAT4 headColor = r.cleared ? COLOR_WIN
+                                                  : (r.wasDraw ? COLOR_HINT : COLOR_LOSE);
     const float headW = Text::MeasureWidth(head, TEXT_BIG);
     Text::Draw((screenW - headW) * 0.5f, 60.0f, head, TEXT_BIG, headColor);
 
@@ -206,7 +208,8 @@ void Result_Draw()
 
     if (!r.cleared && !r.defeatedByBoss.empty())
     {
-        std::snprintf(buf, sizeof(buf), "敗北： %s", r.defeatedByBoss.c_str());
+        std::snprintf(buf, sizeof(buf), "%s： %s",
+                      r.wasDraw ? "引き分け" : "敗北", r.defeatedByBoss.c_str());
         drawStat(buf);
     }
     if (!r.dateTime.empty())

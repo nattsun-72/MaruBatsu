@@ -151,6 +151,17 @@ namespace AbilityPool
             picked.push_back(all[chosen]);
             all.erase(all.begin() + chosen);   // 非復元 (同名重複を防ぐ)
         }
+
+        // フェイルセーフ: 全レアリティ重みが0等で1枚も選べなかった場合、
+        // 報酬画面が空(操作不能)になるのを防ぐため、残候補から重み無視で補う。
+        // 通常運用(非ユニークのコモン/レアが常に候補に残る)では発火しない。
+        while (static_cast<int>(picked.size()) < count && !all.empty())
+        {
+            std::uniform_int_distribution<size_t> dist(0, all.size() - 1);
+            const size_t idx = dist(Rng());
+            picked.push_back(all[idx]);
+            all.erase(all.begin() + idx);
+        }
         return picked;
     }
 }

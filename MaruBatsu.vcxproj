@@ -324,8 +324,10 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     <ClInclude Include="game\boss\boss.h" />
     <ClInclude Include="game\boss\boss_roster.h" />
     <ClInclude Include="game\boss\ice_board_boss.h" />
+    <ClInclude Include="game\boss\mirror_warden_boss.h" />
     <ClInclude Include="game\boss\spiral_queen_boss.h" />
     <ClInclude Include="game\boss\chain_pulse_boss.h" />
+    <ClInclude Include="game\boss\time_devourer_boss.h" />
     <ClInclude Include="game\boss\gravity_tyrant_boss.h" />
     <ClInclude Include="game\boss\engraved_one_boss.h" />
     <ClInclude Include="game\collision.h" />

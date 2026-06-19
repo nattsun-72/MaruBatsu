@@ -2329,8 +2329,12 @@ void Game_Update(double elapsed_time)
             }
             else
             {
-                // 敗北: 倒されたボス名を記録(セーブは寛容仕様で残す)
-                RunState::CaptureResult(false, g_Boss ? g_Boss->name : std::string());
+                // 敗北/引き分け: 対戦ボス名を記録(セーブは寛容仕様で残す)。
+                // 引き分け終了は敗北と区別して記録する。
+                const bool wasDraw = (g_State.result == MatchResult::Draw);
+                RunState::CaptureResult(false,
+                                        g_Boss ? g_Boss->name : std::string(),
+                                        wasDraw);
             }
             Scene_Change(Scene::RESULT);
             break;

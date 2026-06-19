@@ -4,10 +4,15 @@
  * @author Natsume Shidara
  * @date   2026/05/15
  * @update 2026/06/19 - ランダム+1手読みからミニマックスへ刷新 (α版)
+ * @update 2026/06/19 - ボスギミック/着手数を遷移関数へ織り込み (β化)
  *
  * 着手選択ロジック:
  *   盤面を再帰的に読み進め、自分(self)の勝ちを最大化、相手の勝ちを
  *   最小化する手を選ぶ。アルファベータ枝刈りで無駄な枝を切り落とす。
+ *
+ *   遷移(着手)は注入された PlacementSim を通すため、ボスギミック
+ *   (氷盤スライド/回転/重力/連鎖/spawn等)を適用した「実際の盤面」を
+ *   評価する。連続着手(二手打ち/焦燥)も PlacementCountFn で再現する。
  *
  *   評価値:
  *     self の勝ち  = +(WIN_SCORE - 手数)   … 早い勝ちほど高評価
@@ -17,13 +22,14 @@
  *
  *   勝利判定は AbilityRegistry の IWinCondition を経由するため、
  *   「ライン本数追加」「拡張勝利」等のアビリティが入っても自動追従する。
+ *   同時成立はゲーム本体と同じくプレイヤー優先で裁定する。
  *
  * 探索コスト制御:
- *   3×3 は空きマス9以下なので全探索しても安全(高々9! ≒ 36万、枝刈りで
- *   実際は遥かに少ない)。4×4 以上は空きマスが増えて爆発するため、
- *   空きマス数に応じて maxDepth を制限し、さらに葉ノード数が上限を
- *   超えたら探索を打ち切ってヒューリスティック評価へフォールバックする。
- *   ※ ギミック(スライド/回転/重力/spawn)は考慮せず純粋な設置のみ。
+ *   3×3 は空きマス9以下なので全探索しても安全。4×4 以上は空きマスが
+ *   増えて爆発するため、空きマス数に応じて maxDepth を制限し、さらに葉
+ *   ノード数が上限を超えたら探索を打ち切ってヒューリスティック評価へ
+ *   フォールバックする。ギミック適用で盤面が変わるため、各手は試し置きの
+ *   undo ではなく結果盤面のコピーを生成して読み進める。
  ****************************************/
 #include "ai.h"
 #include "board.h"
@@ -94,7 +100,7 @@ namespace
 
     /**
      * @struct SearchContext
-     * @brief  探索全体で共有する状態 (固定の陣営情報と消費ノード数)
+     * @brief  探索全体で共有する状態 (陣営情報・遷移関数・消費ノード数)
      */
     struct SearchContext
     {
@@ -104,34 +110,66 @@ namespace
         int            maxDepth;    // 探索深さ上限
         long long      leafCount;   // 評価した葉ノード数(予算管理用)
 
-        SearchContext(Piece s, IWinCondition* w, int depth)
-            : self(s), opp(Opponent(s)), win(w), maxDepth(depth), leafCount(0) {}
+        const AI::PlacementSim&      sim;     // 設置+ギミック適用の遷移関数
+        const AI::PlacementCountFn&  counts;  // 着手数プロバイダ
+
+        SearchContext(Piece s, IWinCondition* w, int depth,
+                      const AI::PlacementSim& sm, const AI::PlacementCountFn& ct)
+            : self(s), opp(Opponent(s)), win(w), maxDepth(depth), leafCount(0),
+              sim(sm), counts(ct) {}
 
         /** @brief 葉ノード予算を使い切ったか */
         bool Exhausted() const { return leafCount >= NODE_BUDGET; }
+
+        /** @brief 指定陣営の着手数 (最低1にクランプ) */
+        int PlacementCount(Piece p) const
+        {
+            const int c = counts ? counts(p) : 1;
+            return (c < 1) ? 1 : c;
+        }
+
+        /** @brief 設置+ギミック適用後の盤面を返す (sim 未指定なら純粋設置) */
+        Board Apply(const Board& board, int x, int y, Piece who) const
+        {
+            if (sim) return sim(board, { x, y }, who);
+            Board next = board;
+            next.Set(x, y, who);
+            return next;
+        }
     };
 
     /**
+     * @brief  終端(勝敗)判定。決着していれば self 視点スコアを out へ返す。
+     * @detail 同時成立はゲーム本体と同じくプレイヤー優先で裁定する。
+     * @return 決着していれば true (out に評価値を格納)
+     */
+    bool TerminalScore(const Board& board, int depth, SearchContext& ctx, int& out)
+    {
+        const bool playerWon = CheckWinWith(board, Piece::Player, ctx.win);
+        const bool enemyWon  = CheckWinWith(board, Piece::Enemy,  ctx.win);
+        if (!playerWon && !enemyWon) return false;
+
+        const Piece winner = playerWon ? Piece::Player : Piece::Enemy;  // 同時成立はプレイヤー優先
+        out = (winner == ctx.self) ? (WIN_SCORE - depth) : -(WIN_SCORE - depth);
+        return true;
+    }
+
+    /**
      * @brief  アルファベータ枝刈り付きミニマックス本体
-     * @detail self 手番=最大化、相手手番=最小化。終端(勝敗/満杯/深さ上限/
-     *         予算枯渇)で評価値を返す。盤面は試し置き→評価→戻すで再利用する。
-     * @param  board   現在の盤面(参照渡し・破壊的に試し置きするが戻すので不変)
-     * @param  toMove  この手番で着手する陣営
-     * @param  depth   現在の探索深さ(ルート=0)
-     * @param  alpha   αカット用の下限
-     * @param  beta    βカット用の上限
-     * @param  ctx     探索コンテキスト(共有状態)
+     * @param  board          現在の盤面 (この局面から toMove が着手する)
+     * @param  toMove         この手番で着手する陣営
+     * @param  placementsLeft toMove がこのターンに残す着手数 (連続着手対応)
+     * @param  depth          現在の探索深さ(着手1回ごとに+1)
+     * @param  alpha,beta     αβ枝刈り境界
+     * @param  ctx            探索コンテキスト(共有状態)
      * @return self 視点の評価値
      */
-    int Minimax(Board& board, Piece toMove, int depth,
+    int Minimax(const Board& board, Piece toMove, int placementsLeft, int depth,
                 int alpha, int beta, SearchContext& ctx)
     {
-        // --- 終端判定(直前の着手で決着していないか) ---
-        // 手数が浅い決着ほど高評価になるよう depth で補正する。
-        if (CheckWinWith(board, ctx.self, ctx.win))
-            return  WIN_SCORE - depth;   // self の勝ち(早いほど高い)
-        if (CheckWinWith(board, ctx.opp, ctx.win))
-            return -(WIN_SCORE - depth); // 相手の勝ち(遅いほどマシ=高い)
+        // --- 終端判定(直前の着手/ギミックで決着していないか) ---
+        int term = 0;
+        if (TerminalScore(board, depth, ctx, term)) return term;
 
         // --- 深さ上限 / 葉ノード予算 / 満杯 → ヒューリスティックで打ち切り ---
         if (depth >= ctx.maxDepth || ctx.Exhausted() || board.IsFull())
@@ -150,10 +188,23 @@ namespace
             {
                 if (!board.IsEmpty(x, y)) continue;
 
-                board.Set(x, y, toMove);                       // 試し置き
-                const int score = Minimax(board, Opponent(toMove),
-                                          depth + 1, alpha, beta, ctx);
-                board.Set(x, y, Piece::Empty);                 // 元に戻す
+                // 設置+ギミック適用後の盤面を生成して読み進める。
+                const Board next = ctx.Apply(board, x, y, toMove);
+
+                int score;
+                if (placementsLeft > 1)
+                {
+                    // 同一陣営の連続着手が残っている (二手打ち等)
+                    score = Minimax(next, toMove, placementsLeft - 1,
+                                    depth + 1, alpha, beta, ctx);
+                }
+                else
+                {
+                    // 相手のターンへ (相手の着手数を取得)
+                    const Piece nextMover = Opponent(toMove);
+                    score = Minimax(next, nextMover, ctx.PlacementCount(nextMover),
+                                    depth + 1, alpha, beta, ctx);
+                }
 
                 if (maximizing)
                 {
@@ -178,15 +229,16 @@ namespace AI
     //======================================
     // 着手決定 (アルファベータ枝刈り付きミニマックス)
     //======================================
-    Vec2 ChooseMove_Random(const Board& board, Piece self, IWinCondition* win)
+    Vec2 ChooseMove(const Board& board, Piece self, IWinCondition* win,
+                    const PlacementSim& simulate, const PlacementCountFn& placements)
     {
         const int emptyCount = board.EmptyCount();
         if (emptyCount <= 0) return { -1, -1 };  // 空きマス無し → 着手不可
 
-        // 空きマス数に応じて探索深さを決め、探索コンテキストを用意する。
-        SearchContext ctx(self, win, DepthLimitFor(emptyCount));
+        SearchContext ctx(self, win, DepthLimitFor(emptyCount), simulate, placements);
 
-        Board test = board;  // ルートの試し置き用コピー(以降この1枚を使い回す)
+        // self がこのターンに残す着手数 (連続着手なら2手目以降も self が続ける)
+        const int selfPlacements = ctx.PlacementCount(self);
 
         int bestScore = std::numeric_limits<int>::min();
         std::vector<Vec2> bestMoves;  // 同評価(同点)の手の候補
@@ -195,17 +247,27 @@ namespace AI
         int alpha = std::numeric_limits<int>::min();
         const int beta = std::numeric_limits<int>::max();
 
-        for (int y = 0; y < test.height; ++y)
+        for (int y = 0; y < board.height; ++y)
         {
-            for (int x = 0; x < test.width; ++x)
+            for (int x = 0; x < board.width; ++x)
             {
-                if (!test.IsEmpty(x, y)) continue;
+                if (!board.IsEmpty(x, y)) continue;
 
-                test.Set(x, y, self);  // self の一手を試し置き
-                // self が着手した直後の局面を、相手手番(深さ1)から評価する。
-                const int score = Minimax(test, Opponent(self), 1,
-                                          alpha, beta, ctx);
-                test.Set(x, y, Piece::Empty);  // 元に戻す
+                // self の一手を適用 (設置+ギミック)
+                const Board next = ctx.Apply(board, x, y, self);
+
+                int score;
+                if (selfPlacements > 1)
+                {
+                    // この手番でまだ self が置ける → self 継続として評価
+                    score = Minimax(next, self, selfPlacements - 1, 1, alpha, beta, ctx);
+                }
+                else
+                {
+                    const Piece nextMover = Opponent(self);
+                    score = Minimax(next, nextMover, ctx.PlacementCount(nextMover),
+                                    1, alpha, beta, ctx);
+                }
 
                 if (score > bestScore)
                 {
@@ -218,8 +280,7 @@ namespace AI
                     bestMoves.push_back({ x, y });  // 同点手として保持
                 }
 
-                // ルートでも α を更新して以降の評価を枝刈りに活かす。
-                alpha = (std::max)(alpha, bestScore);
+                alpha = (std::max)(alpha, bestScore);  // ルートでも枝刈りに活用
             }
         }
 

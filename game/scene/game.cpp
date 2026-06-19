@@ -865,8 +865,26 @@ namespace
         g_AiTimer -= dt;
         if (g_AiTimer > 0.0) return;
 
-        const Vec2 v = AI::ChooseMove_Random(
-            g_State.board, Piece::Enemy, g_Registry.GetWinCondition());
+        // 設置+ボスギミック適用後の盤面を返す遷移関数 (AIがギミックを読むために使う)。
+        // 現ターンの slideAnchorSide(重駒の固定対象)を引き継いで実戦と同条件で評価する。
+        AI::PlacementSim sim = [](const Board& b, Vec2 pos, Piece who) -> Board
+        {
+            GameState tmp;
+            tmp.board           = b;
+            tmp.currentPlayer   = who;
+            tmp.slideAnchorSide = g_State.slideAnchorSide;
+            tmp.board.Set(pos.x, pos.y, who);
+            g_Registry.OnPlace(tmp, pos, who);   // ギミックを盤面へ適用 (animPhasesは無視)
+            return tmp.board;
+        };
+        // 各陣営の着手数 (二手打ち/焦燥などで2になり得る)。
+        AI::PlacementCountFn counts = [](Piece p) -> int
+        {
+            return g_Registry.GetPlacementCount(p);
+        };
+
+        const Vec2 v = AI::ChooseMove(
+            g_State.board, Piece::Enemy, g_Registry.GetWinCondition(), sim, counts);
         g_AiPending = false;
         if (v.x < 0)
         {

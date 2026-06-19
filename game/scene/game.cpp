@@ -1609,14 +1609,12 @@ namespace
 
         if (g_EngravedRef)
         {
-            // 刻まれし者: 現在振るっている力のインジケータを表示
-            switch (g_EngravedRef->mode)
-            {
-            case EngravedMode::Ice:     DrawDirChevrons(g_EngravedRef->currentDir); break;
-            case EngravedMode::Spiral:  DrawRotChevrons(g_EngravedRef->clockwise);  break;
-            case EngravedMode::Chain:   DrawChainCorners();                          break;
-            case EngravedMode::Gravity: DrawGravityChevrons();                       break;
-            }
+            // 刻まれし者: 3つの力(設置系+構造系=回転+駒強化系=重力)を同時提示。
+            // 構造系(回転)と駒強化系(重力)は常時、設置系は氷盤/連鎖で切替。
+            DrawRotChevrons(g_EngravedRef->clockwise);
+            DrawGravityChevrons();
+            if (g_EngravedRef->IsChainPlace()) DrawChainCorners();
+            else                               DrawDirChevrons(g_EngravedRef->currentDir);
         }
     }
 
@@ -1683,8 +1681,8 @@ namespace
             if (g_EngravedRef && g_State.result == MatchResult::Playing)
             {
                 char modeBuf[64];
-                std::snprintf(modeBuf, sizeof(modeBuf), "今の力：%s",
-                              g_EngravedRef->ModeName());
+                std::snprintf(modeBuf, sizeof(modeBuf), "宿りし力：%s",
+                              g_EngravedRef->PowersLabel());
                 const float modeW = Text::MeasureWidth(modeBuf, TEXT_SIZE_HINT);
                 Text::Draw((screenW - modeW) * 0.5f,
                            24.0f + TEXT_SIZE_HUD + 4.0f + TEXT_SIZE_HINT + 4.0f,

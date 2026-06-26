@@ -162,8 +162,9 @@ void BossReward_Initialize()
         return;
     }
 
-    // 対戦の流れの一部なので対戦BGMを継続させる
-    SoundManager_PlayBGM(SOUND_BGM_GAME);
+    // 勝利後の報酬の流れなので、勝利テーマをそのまま継続させる
+    // (決着時に再生済みなら PlayBGM は再スタートせず鳴り続ける)
+    SoundManager_PlayBGM(SOUND_BGM_WIN);
 }
 
 void BossReward_Finalize()

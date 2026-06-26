@@ -2402,8 +2402,11 @@ void Game_Initialize()
     Text::Initialize();
     ResetMatch();
 
-    // 対戦BGM (素材未配置なら無音)。報酬画面と同一曲なので往復で途切れない。
-    SoundManager_PlayBGM(SOUND_BGM_GAME);
+    // 対戦BGM (素材未配置なら無音)。ラスボス戦のみ専用曲(boss.mp3)、通常ボスは
+    // game.mp3 (報酬画面と同一曲なので往復で途切れない)。
+    const bool isFinalBoss =
+        (RunState::CurrentBossIndex() >= RunState::BossCount() - 1);
+    SoundManager_PlayBGM(isFinalBoss ? SOUND_BGM_BOSS : SOUND_BGM_GAME);
 }
 
 void Game_Finalize()
@@ -2451,7 +2454,7 @@ void Game_Update(double elapsed_time)
     {
         if (g_State.result == MatchResult::Win)
         {
-            SoundManager_PlayResultTheme(SOUND_SE_WIN);   // 対戦BGMを止めて単独再生
+            SoundManager_PlayResultTheme(SOUND_BGM_WIN);   // 対戦BGMを止めて単独再生
             g_WinLineSide = Piece::Player;
             g_WinLine     = WinCheck::FindWinningLine(g_State.board, Piece::Player);
             g_WinFlash    = WIN_FLASH_DURATION;
@@ -2460,7 +2463,7 @@ void Game_Update(double elapsed_time)
         }
         else if (g_State.result == MatchResult::Lose)
         {
-            SoundManager_PlayResultTheme(SOUND_SE_LOSE);  // 対戦BGMを止めて単独再生
+            SoundManager_PlayResultTheme(SOUND_BGM_LOSE);  // 対戦BGMを止めて単独再生
             g_WinLineSide = Piece::Enemy;
             g_WinLine     = WinCheck::FindWinningLine(g_State.board, Piece::Enemy);
             g_WinFlash    = WIN_FLASH_DURATION;
@@ -2469,7 +2472,7 @@ void Game_Update(double elapsed_time)
         }
         else if (g_State.result == MatchResult::Timeout)
         {
-            SoundManager_PlayResultTheme(SOUND_SE_LOSE);  // 対戦BGMを止めて単独再生
+            SoundManager_PlayResultTheme(SOUND_BGM_LOSE);  // 対戦BGMを止めて単独再生
             g_WinLineSide = Piece::Enemy;   // 時間切れはライン無し・赤フラッシュのみ
             g_WinLine.clear();
             g_WinFlash    = WIN_FLASH_DURATION;

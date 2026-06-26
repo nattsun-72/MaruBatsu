@@ -18,17 +18,18 @@ enum SoundID
     SOUND_BGM_TITLE,
     SOUND_BGM_GAME,
     SOUND_BGM_RESULT,
+    SOUND_BGM_BOSS,     // ラスボス戦専用
+    SOUND_BGM_WIN,      // 勝利テーマ (長尺。決着〜報酬画面まで継続)
+    SOUND_BGM_LOSE,     // 敗北テーマ (長尺)
 
     // SE - UI
     SOUND_SE_SELECT,    // カーソル移動・カードホバー
     SOUND_SE_DECIDE,    // 決定
     SOUND_SE_CANCEL,    // 戻る・キャンセル
-    SOUND_SE_PAUSE,     // ポーズ (将来用)
+    SOUND_SE_PAUSE,     // 設定/ポーズを開く
 
     // SE - ゲームプレイ
     SOUND_SE_PLACE,     // 駒の設置
-    SOUND_SE_WIN,       // 勝利
-    SOUND_SE_LOSE,      // 敗北・時間切れ
     SOUND_SE_ABILITY,   // アビリティ/ボスギミックの発動
     SOUND_SE_TIMER_LOW, // 思考時間 残りわずか
 

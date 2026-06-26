@@ -48,14 +48,15 @@ namespace
         { "assets/sound/bgm/title.mp3",    true  },  // SOUND_BGM_TITLE
         { "assets/sound/bgm/game.mp3",     true  },  // SOUND_BGM_GAME
         { "assets/sound/bgm/result.mp3",   true  },  // SOUND_BGM_RESULT
-        
+        { "assets/sound/bgm/boss.mp3",     true  },  // SOUND_BGM_BOSS (ラスボス戦専用)
+        { "assets/sound/bgm/win.mp3",      true  },  // SOUND_BGM_WIN  (勝利テーマ)
+        { "assets/sound/bgm/lose.mp3",     true  },  // SOUND_BGM_LOSE (敗北テーマ)
+
         { "assets/sound/se/select.mp3",    false },  // SOUND_SE_SELECT
         { "assets/sound/se/decide.mp3",    false },  // SOUND_SE_DECIDE
         { "assets/sound/se/cancel.mp3",    false },  // SOUND_SE_CANCEL
         { "assets/sound/se/pause.mp3",     false },  // SOUND_SE_PAUSE
         { "assets/sound/se/place.mp3",     false },  // SOUND_SE_PLACE
-        { "assets/sound/se/win.mp3",       false },  // SOUND_SE_WIN
-        { "assets/sound/se/lose.mp3",      false },  // SOUND_SE_LOSE
         { "assets/sound/se/ability.mp3",   false },  // SOUND_SE_ABILITY
         { "assets/sound/se/timer_low.mp3", false },  // SOUND_SE_TIMER_LOW
     };

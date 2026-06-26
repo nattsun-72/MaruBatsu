@@ -126,9 +126,9 @@ void Reward_Initialize()
     }
     g_HoverIndex = -1;
 
-    // 報酬は対戦の流れの一部なので対戦BGMを継続させる
-    // (PlayBGM は同一曲なら鳴り直さないため、対戦↔報酬では途切れない)
-    SoundManager_PlayBGM(SOUND_BGM_GAME);
+    // 報酬選択中も勝利テーマを流し続ける
+    // (決着時に再生済みなら PlayBGM は鳴り直さず継続。次の対戦開始でBGMへ戻る)
+    SoundManager_PlayBGM(SOUND_BGM_WIN);
 }
 
 void Reward_Finalize()

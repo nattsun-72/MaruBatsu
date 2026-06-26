@@ -16,9 +16,11 @@ SandsOfTimeAbility::SandsOfTimeAbility()
     name          = "時の砂";
     description   = "クリックで\n思考時間を全回復";
     rarity        = Rarity::Rare;
+    bossExclusive = true;   // 時喰らい 撃破でのみ獲得
     activatable   = true;
     flashText     = "時間回復！";
-    charges       = Config::GetInt("abilities.sandsOfTime.charges", 2);
+    // ボス撃破報酬として強化(回数制限を緩和)。値は game_config.json で調整可。
+    charges       = Config::GetInt("abilities.sandsOfTime.charges", 4);
     refillSeconds = Config::GetDouble("abilities.sandsOfTime.refillSeconds", 180.0);
 }
 

@@ -262,4 +262,7 @@ void Title_Draw()
         const auto& mouse = InputManager_GetMouseState();
         DrawBtn(h, "戦績", BtnContains(h, mouse.x, mouse.y));
     }
+
+    /*--- 設定キーの案内 (左上、控えめに) ---*/
+    Text::Draw(24.0f, 24.0f, "O キー: 設定", 18.0f, COLOR_HINT);
 }

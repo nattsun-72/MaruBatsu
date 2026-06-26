@@ -41,20 +41,23 @@ namespace
     //     次回起動時に自動的に鳴るようになる (コード変更不要)
     // 拡張子を wav にしたい場合は下のパスの ".mp3" を ".wav" へ変えるだけでよい。
     // ----------------------------------------------------------------------
+    // BGMは assets/sound/bgm/、SEは assets/sound/se/ に配置する。
+    // (Zankuu時代の素材命名 title/game/result・select/decide/cancel に合わせている)
     const SoundFileInfo SOUND_FILES[SOUND_MAX] =
     {
-        { "assets/sound/bgm_title.mp3",   true  },  // SOUND_BGM_TITLE
-        { "assets/sound/bgm_game.mp3",    true  },  // SOUND_BGM_GAME
-        { "assets/sound/bgm_result.mp3",  true  },  // SOUND_BGM_RESULT
-        { "assets/sound/se_select.mp3",   false },  // SOUND_SE_SELECT
-        { "assets/sound/se_decide.mp3",   false },  // SOUND_SE_DECIDE
-        { "assets/sound/se_cancel.mp3",   false },  // SOUND_SE_CANCEL
-        { "assets/sound/se_pause.mp3",    false },  // SOUND_SE_PAUSE
-        { "assets/sound/se_place.mp3",    false },  // SOUND_SE_PLACE
-        { "assets/sound/se_win.mp3",      false },  // SOUND_SE_WIN
-        { "assets/sound/se_lose.mp3",     false },  // SOUND_SE_LOSE
-        { "assets/sound/se_ability.mp3",  false },  // SOUND_SE_ABILITY
-        { "assets/sound/se_timer_low.mp3",false },  // SOUND_SE_TIMER_LOW
+        { "assets/sound/bgm/title.mp3",    true  },  // SOUND_BGM_TITLE
+        { "assets/sound/bgm/game.mp3",     true  },  // SOUND_BGM_GAME
+        { "assets/sound/bgm/result.mp3",   true  },  // SOUND_BGM_RESULT
+        
+        { "assets/sound/se/select.mp3",    false },  // SOUND_SE_SELECT
+        { "assets/sound/se/decide.mp3",    false },  // SOUND_SE_DECIDE
+        { "assets/sound/se/cancel.mp3",    false },  // SOUND_SE_CANCEL
+        { "assets/sound/se/pause.mp3",     false },  // SOUND_SE_PAUSE
+        { "assets/sound/se/place.mp3",     false },  // SOUND_SE_PLACE
+        { "assets/sound/se/win.mp3",       false },  // SOUND_SE_WIN
+        { "assets/sound/se/lose.mp3",      false },  // SOUND_SE_LOSE
+        { "assets/sound/se/ability.mp3",   false },  // SOUND_SE_ABILITY
+        { "assets/sound/se/timer_low.mp3", false },  // SOUND_SE_TIMER_LOW
     };
 
     /**
@@ -153,6 +156,14 @@ void SoundManager_SetBGMVolume(float volume)
     {
         SetAudioVolume(g_AudioHandles[g_CurrentBGM], g_BGMVolume);
     }
+}
+
+void SoundManager_PlayResultTheme(SoundID id)
+{
+    // 長尺の決着曲(勝利/敗北)はBGM枠で排他再生する。
+    // PlayBGM が現在のBGMを停止 → 本IDを「現在のBGM」として鳴らすため、
+    // 対戦BGMに被らず、次にシーンが PlayBGM を呼べば自然に置き換わる。
+    SoundManager_PlayBGM(id);
 }
 
 void SoundManager_PlaySE(SoundID id)

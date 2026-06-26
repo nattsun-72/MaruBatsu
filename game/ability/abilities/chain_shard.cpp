@@ -58,12 +58,14 @@ namespace
 //======================================
 ChainShardAbility::ChainShardAbility()
 {
-    name        = "連鎖の欠片";
-    description = "クリックで装填。次の\n自駒設置で隣へ拡張";
-    rarity      = Rarity::Rare;
-    activatable = true;
-    flashText   = "連鎖装填！";
-    charges     = Config::GetInt("abilities.chainShard.charges", 3);
+    name          = "連鎖の欠片";
+    description   = "クリックで装填。次の\n自駒設置で隣へ拡張";
+    rarity        = Rarity::Rare;
+    bossExclusive = true;   // 連鎖の鼓動 撃破でのみ獲得
+    activatable   = true;
+    flashText     = "連鎖装填！";
+    // ボス撃破報酬として強化(回数制限を緩和)。値は game_config.json で調整可。
+    charges       = Config::GetInt("abilities.chainShard.charges", 5);
 }
 
 //======================================

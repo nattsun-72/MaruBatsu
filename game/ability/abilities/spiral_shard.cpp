@@ -15,12 +15,14 @@
 //======================================
 SpiralShardAbility::SpiralShardAbility()
 {
-    name        = "螺旋の欠片";
-    description = "クリックで盤面を\n時計回りに90度回転";
-    rarity      = Rarity::Rare;
-    activatable = true;
-    flashText   = "盤面が回転！";
-    charges     = Config::GetInt("abilities.spiralShard.charges", 2);
+    name          = "螺旋の欠片";
+    description   = "クリックで盤面を\n時計回りに90度回転";
+    rarity        = Rarity::Rare;
+    bossExclusive = true;   // 螺旋の女王 撃破でのみ獲得
+    activatable   = true;
+    flashText     = "盤面が回転！";
+    // ボス撃破報酬として強化(回数制限を緩和)。値は game_config.json で調整可。
+    charges       = Config::GetInt("abilities.spiralShard.charges", 4);
 }
 
 //======================================

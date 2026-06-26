@@ -16,10 +16,11 @@
 //======================================
 ReflectionAbility::ReflectionAbility()
 {
-    name        = "鏡映";
-    description = "置いた自駒が\n点対称マスにも現れる";
-    rarity      = Rarity::Epic;
-    unique      = true;   // 点対称化は1つで完結するため一度限り
+    name          = "鏡映";
+    description   = "置いた自駒が\n点対称マスにも現れる";
+    rarity        = Rarity::Epic;
+    bossExclusive = true;   // 鏡の番人 撃破でのみ獲得
+    unique        = true;   // 点対称化は1つで完結するため一度限り
 }
 
 //======================================

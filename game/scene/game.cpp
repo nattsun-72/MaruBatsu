@@ -17,6 +17,7 @@
 #include "game_state.h"
 #include "ai.h"
 #include "board_ops.h"
+#include "win_check.h"
 #include "render_primitives.h"
 #include "text_draw.h"
 
@@ -34,6 +35,7 @@
 
 #include "scene.h"
 #include "direct3d.h"
+#include "sprite.h"
 #include "input_manager.h"
 #include "keyboard.h"
 #include "sound_manager.h"
@@ -91,15 +93,16 @@ namespace
     //--------------------------------------
     // 所持アビリティ一覧
     //--------------------------------------
-    constexpr float ABILITY_LIST_X = 24.0f;   // 一覧の左端X
+    constexpr float ABILITY_LIST_X = 24.0f;   // 一覧の左端X (消費系の列)
     constexpr float ABILITY_ROW_H  = 36.0f;   // 1行の高さ
-    constexpr float ABILITY_BTN_W  = 220.0f;  // 任意発動ボタンの幅
+    constexpr float ABILITY_BTN_W  = 220.0f;  // 1列の幅 / 任意発動ボタンの幅
     constexpr float ABILITY_BTN_H  = 30.0f;   // 任意発動ボタンの高さ
+    constexpr float ABILITY_COL_GAP = 20.0f;  // 消費列とパッシブ列の間隔
 
     //--------------------------------------
     // アビリティ履歴ポップアップ
     //--------------------------------------
-    constexpr int   ABILITY_VISIBLE_MAX = 5;       // HUDに表示する最大グループ数
+    constexpr int   ABILITY_VISIBLE_MAX = 10;      // 1列に表示する最大グループ数(超過は「…」)
     constexpr float POPUP_CARD_W        = 200.0f;  // カード幅
     constexpr float POPUP_CARD_H        = 280.0f;  // カード高さ
     constexpr float POPUP_CARD_GAP      = 24.0f;   // カード間の余白
@@ -186,6 +189,39 @@ namespace
     constexpr double TIMER_LOW_SE_THRESHOLD = 10.0;  // 残時間が これ以下 で警告音(1度)
     MatchResult g_PrevResult     = MatchResult::Playing;  // 前フレームの勝敗(遷移検出用)
     bool        g_TimerLowSePlayed = false;               // 当該ターンで警告音を鳴らしたか
+
+    //--------------------------------------
+    // 決着演出 (勝利ラインのグロー + 確定フラッシュ)
+    //--------------------------------------
+    std::vector<Vec2> g_WinLine;                       // 勝利ラインのマス列 (空=ライン勝利でない)
+    Piece             g_WinLineSide = Piece::Empty;    // 勝者(ライン/フラッシュの色分け用)
+    double            g_WinFlash    = 0.0;             // 決着フラッシュの残り時間(秒)
+    constexpr double  WIN_FLASH_DURATION = 0.45;       // フラッシュ演出の長さ(秒)
+
+    //--------------------------------------
+    // 画面シェイク / ヒットストップ (手応えの演出)
+    //--------------------------------------
+    double g_ShakeTime = 0.0;   // 残りシェイク時間(秒)
+    double g_ShakeDur  = 0.0;   // シェイクの総時間(振幅減衰の基準)
+    double g_ShakeMag  = 0.0;   // シェイクの初期振幅(px)
+    double g_HitStop   = 0.0;   // 残りヒットストップ時間(秒。>0 の間ゲーム進行を凍結)
+
+    /**
+     * @brief  画面シェイクを開始する (強い方を採用 = 進行中のより弱い揺れは上書きしない)
+     * @param  mag 初期振幅(px)  @param dur 持続時間(秒)
+     * @detail 設置直後に弱い効果シェイクが続いても、設置の手応えを減衰させないため、
+     *         現在の残り振幅より弱い要求は無視する。
+     */
+    void TriggerShake(double mag, double dur)
+    {
+        const double curAmp = (g_ShakeTime > 0.0 && g_ShakeDur > 0.0)
+                            ? g_ShakeMag * (g_ShakeTime / g_ShakeDur) : 0.0;
+        if (mag < curAmp) return;   // 進行中のより強い揺れを優先
+
+        g_ShakeMag  = mag;
+        g_ShakeDur  = dur;
+        g_ShakeTime = dur;
+    }
 
     //--------------------------------------
     // アビリティ履歴ポップアップの状態
@@ -320,12 +356,21 @@ namespace
 
     //======================================
     // 所持アビリティ一覧のレイアウト
-    //   画面左下にヘッダ + count行を配置する。Draw/クリック判定で共通使用。
+    //   画面左下に「消費系」「パッシブ」の2列を並べる。各列はヘッダ + count行を
+    //   下端揃えで上へ積む。Draw/クリック判定で共通使用。
     //======================================
+    /**
+     * @brief  列 col の左端X座標 (0=消費列, 1=パッシブ列)
+     */
+    float AbilityColX(int col)
+    {
+        return ABILITY_LIST_X + col * (ABILITY_BTN_W + ABILITY_COL_GAP);
+    }
+
     /**
      * @brief  アビリティ一覧 (ヘッダ含む) の上端Y座標
      * @param  count 一覧の行数
-     * @return ヘッダ行の上端Y座標
+     * @return ヘッダ行の上端Y座標 (行数によらず下端は画面下から一定)
      */
     float AbilityListTop(int count)
     {
@@ -391,6 +436,22 @@ namespace
                 groups.push_back(std::move(g));
             }
         }
+        // 使い切った消費系(残チャージ合計0)は表示から除外する。
+        // パッシブ(回数無制限=ChargesLeft<0)は常に残す。
+        groups.erase(std::remove_if(groups.begin(), groups.end(),
+            [](const AbilityGroup& g)
+            {
+                if (!g.rep->activatable) return false;   // パッシブは残す
+                int total = 0;
+                for (Ability* a : g.instances)
+                {
+                    const int c = a->ChargesLeft();
+                    if (c < 0) return false;             // 無制限が混在 → 残す
+                    total += c;
+                }
+                return total == 0;                       // 全消費済みなら除外
+            }), groups.end());
+
         // 消費系(任意発動)を優先し、その後はレアリティの高い順に並べる
         std::stable_sort(groups.begin(), groups.end(),
             [](const AbilityGroup& x, const AbilityGroup& y)
@@ -611,6 +672,13 @@ namespace
         g_AbilityPopupOpen = false;
         g_PopupScroll      = 0.0;
         g_ImmortalFlash    = 0.0;
+        g_WinLine.clear();
+        g_WinLineSide      = Piece::Empty;
+        g_WinFlash         = 0.0;
+        g_ShakeTime        = 0.0;
+        g_HitStop          = 0.0;
+        Sprite_SetViewOffset(0.0f, 0.0f);
+        View3D::ClearImpact();
 
         /*--- ボス再ロード → 盤面サイズ確定 → 先手ターン開始 ---*/
         LoadBoss();
@@ -738,6 +806,10 @@ namespace
         g_AnimPhaseTimer = 0.0;
         if (g_AnimPhases.empty()) return;
 
+        // 盤面が動く効果(滑り/回転/連鎖等)には軽い揺れで手応えを添える。
+        // 氷盤ボス等は毎手発火するため、疲れない程度の弱い揺れに留める。
+        TriggerShake(3.5, 0.12);
+
         // 各フェーズ開始時の盤面を前計算 (描画時の中間状態復元に使う)
         g_PhaseStartBoards.reserve(g_AnimPhases.size());
         Board cur = boardStart;
@@ -763,6 +835,11 @@ namespace
         --g_State.placementsRemaining;
 
         SoundManager_PlaySE(SOUND_SE_PLACE);   // 駒の設置音
+
+        // 設置の手応え (自駒・敵駒どちらも): 3Dは着手マスを起点に盤面を
+        // 傾けて振動させる。2D視点では高さ変位が効かないため軽い全画面シェイクで代替。
+        View3D::SetImpact(pos.x + 0.5f, pos.y + 0.5f);
+        if (!View3D::Enabled()) TriggerShake(5.0, 0.12);
 
         // 設置時演出 (フック発火前に位置を記録)
         g_LastPlacedPos   = pos;
@@ -806,30 +883,30 @@ namespace
     }
 
     /**
-     * @brief  所持アビリティ一覧(HUD)のクリックを処理する
-     * @return クリックを消費したら true (= 駒設置へ回さない)
-     * @detail 任意発動ボタンの命中で発動、「……」行で履歴ポップアップを開く。
-     *         発動不可でもボタン命中ならクリックを消費する。
+     * @brief  アビリティ1列ぶんのクリックを処理する
+     * @param  col       列番号 (0=消費, 1=パッシブ)
+     * @param  list      その列のグループ一覧
+     * @param  clickable 消費系列(任意発動ボタン)なら true
+     * @return クリックを消費したら true
+     * @detail 「…」行で履歴ポップアップを開き、消費系ボタンの命中で発動する。
      */
-    bool HandleAbilityClick()
+    bool HandleAbilityColumnClick(int col, const std::vector<AbilityGroup>& list,
+                                  bool clickable)
     {
-        if (!InputManager_IsMouseLeftTrigger()) return false;
+        if (list.empty()) return false;
 
-        const auto groups = BuildAbilityGroups();
-        if (groups.empty()) return false;
-
-        const int  total    = static_cast<int>(groups.size());
-        const int  visible  = (total < ABILITY_VISIBLE_MAX)
-                             ? total : ABILITY_VISIBLE_MAX;
-        const bool showMore = total > ABILITY_VISIBLE_MAX;
+        const int  n        = static_cast<int>(list.size());
+        const int  visible  = (n < ABILITY_VISIBLE_MAX) ? n : ABILITY_VISIBLE_MAX;
+        const bool showMore = n > ABILITY_VISIBLE_MAX;
         const int  rowCount = visible + (showMore ? 1 : 0);
+        const float x       = AbilityColX(col);
         const auto& mouse   = InputManager_GetMouseState();
 
-        // 「……」行: 履歴ポップアップを開く (手番を問わず操作可)
+        // 「…」行: 履歴ポップアップを開く (手番を問わず操作可)
         if (showMore)
         {
             const float ry = AbilityRowY(visible, rowCount);
-            if (mouse.x >= ABILITY_LIST_X && mouse.x <= ABILITY_LIST_X + ABILITY_BTN_W
+            if (mouse.x >= x && mouse.x <= x + ABILITY_BTN_W
              && mouse.y >= ry && mouse.y <= ry + ABILITY_BTN_H)
             {
                 g_AbilityPopupOpen = true;
@@ -838,19 +915,41 @@ namespace
             }
         }
 
-        // 任意発動ボタン: プレイヤー手番のみ発動できる
-        if (g_State.currentPlayer != Piece::Player) return false;
-        for (int i = 0; i < visible; ++i)
+        // 任意発動ボタン: 消費系列 かつ プレイヤー手番のみ
+        if (clickable && g_State.currentPlayer == Piece::Player)
         {
-            if (!groups[i].rep->activatable) continue;
-            const float ry = AbilityRowY(i, rowCount);
-            if (mouse.x < ABILITY_LIST_X || mouse.x > ABILITY_LIST_X + ABILITY_BTN_W) continue;
-            if (mouse.y < ry || mouse.y > ry + ABILITY_BTN_H) continue;
-
-            // ボタンに命中 — 発動可能なら発動 (不可でもクリックは消費する)
-            if (GroupCanActivate(groups[i])) GroupActivate(groups[i]);
-            return true;
+            for (int i = 0; i < visible; ++i)
+            {
+                const float ry = AbilityRowY(i, rowCount);
+                if (mouse.x < x || mouse.x > x + ABILITY_BTN_W) continue;
+                if (mouse.y < ry || mouse.y > ry + ABILITY_BTN_H) continue;
+                // ボタン命中 — 発動可能なら発動 (不可でもクリックは消費する)
+                if (GroupCanActivate(list[i])) GroupActivate(list[i]);
+                return true;
+            }
         }
+        return false;
+    }
+
+    /**
+     * @brief  所持アビリティ一覧(HUD)のクリックを処理する
+     * @return クリックを消費したら true (= 駒設置へ回さない)
+     * @detail 消費系(左列)・パッシブ(右列)に分け、各列を順に判定する。
+     */
+    bool HandleAbilityClick()
+    {
+        if (!InputManager_IsMouseLeftTrigger()) return false;
+
+        const auto groups = BuildAbilityGroups();
+        if (groups.empty()) return false;
+
+        // 消費系(col0) と パッシブ(col1) に振り分ける
+        std::vector<AbilityGroup> cons, pass;
+        for (const auto& g : groups)
+            (g.rep->activatable ? cons : pass).push_back(g);
+
+        if (HandleAbilityColumnClick(0, cons, true))  return true;
+        if (HandleAbilityColumnClick(1, pass, false)) return true;
         return false;
     }
 
@@ -1649,6 +1748,80 @@ namespace
     }
 
     /**
+     * @brief  直近に置いた駒から広がる衝撃リングを描画する (設置の手応え)
+     * @detail グロー演出の進行に合わせてリングが広がりながら薄れる。
+     *         BoardPoint 経由なので2D/3D双方で駒の位置に乗る。
+     */
+    void DrawPlacementImpact()
+    {
+        if (g_LastPlacedTimer <= 0.0 || g_LastPlacedPos.x < 0) return;
+
+        const float t = 1.0f - static_cast<float>(g_LastPlacedTimer / GLOW_DURATION); // 0→1
+        const View3D::P2 c = BoardPoint(g_LastPlacedPos.x + 0.5f, g_LastPlacedPos.y + 0.5f);
+        const float cell = PxPerCell(g_LastPlacedPos.y + 0.5f);
+        const float r    = cell * (0.20f + 0.55f * t);   // 設置点から外へ広がる
+        DirectX::XMFLOAT4 col =
+            (g_LastPlacedPiece == Piece::Player) ? COLOR_PIECE_O : COLOR_PIECE_X;
+        col.w = (1.0f - t) * 0.55f;                       // 広がるほど薄れる
+        Prim::DrawCircle(c.x, c.y, r, 3.0f, col, 24);
+    }
+
+    /**
+     * @brief  勝利ラインをグロー付きで強調描画する (決着の見せ場)
+     * @detail 勝利した並びのマス中心を貫く光の帯を、太→細の重ね描きで表現する。
+     *         BoardPoint 経由なので2D/3D双方で正しい位置に乗る。
+     *         隅支配・四角支配等の非ライン勝利では g_WinLine が空なので描かない。
+     */
+    void DrawWinningLine()
+    {
+        if (g_State.result == MatchResult::Playing) return;
+        if (g_WinLine.size() < 2) return;
+
+        const Vec2 a = g_WinLine.front();
+        const Vec2 b = g_WinLine.back();
+        const View3D::P2 pa = BoardPoint(a.x + 0.5f, a.y + 0.5f);
+        const View3D::P2 pb = BoardPoint(b.x + 0.5f, b.y + 0.5f);
+
+        // 脈動と、奥行きに応じた太さ基準 (3Dの遠近にも追従)
+        const float pulse = 0.78f + 0.22f * static_cast<float>(std::sin(g_AnimClock * 6.0));
+        const float midV  = (a.y + b.y) * 0.5f + 0.5f;
+        const float baseW = PxPerCell(midV) * 0.40f;
+
+        const DirectX::XMFLOAT4 col =
+            (g_WinLineSide == Piece::Player) ? COLOR_PIECE_O : COLOR_PIECE_X;
+
+        // 太く淡い → 細く濃い の重ね描きでグローを表現する
+        for (int i = 0; i < 4; ++i)
+        {
+            const float t = i / 3.0f;                       // 0..1
+            const float w = baseW * (1.0f - t * 0.78f);
+            DirectX::XMFLOAT4 c = col;
+            c.w = (0.12f + 0.34f * t) * pulse;
+            Prim::DrawLine(pa.x, pa.y, pb.x, pb.y, w, c);
+        }
+        // 中央の白いコア
+        Prim::DrawLine(pa.x, pa.y, pb.x, pb.y, baseW * 0.13f,
+                       { 1.0f, 1.0f, 1.0f, 0.85f * pulse });
+    }
+
+    /**
+     * @brief  決着の瞬間に全画面フラッシュを焚く (勝=緑寄り / 敗=赤寄り)
+     * @detail 立ち上がりが最も明るく、二次関数で素早くフェードする。
+     */
+    void DrawWinFlash()
+    {
+        if (g_WinFlash <= 0.0) return;
+        const float screenW = static_cast<float>(Direct3D_GetBackBufferWidth());
+        const float screenH = static_cast<float>(Direct3D_GetBackBufferHeight());
+        const float k = static_cast<float>(g_WinFlash / WIN_FLASH_DURATION);  // 1→0
+        DirectX::XMFLOAT4 c = (g_WinLineSide == Piece::Player)
+            ? DirectX::XMFLOAT4{ 0.55f, 1.00f, 0.65f, 0.0f }
+            : DirectX::XMFLOAT4{ 1.00f, 0.45f, 0.45f, 0.0f };
+        c.w = k * k * 0.5f;
+        Prim::DrawRect(0, 0, screenW, screenH, c);
+    }
+
+    /**
      * @brief  現在のボスギミックに応じた視覚的補助をまとめて描画する
      * @detail 規約「盤面が動く効果には視覚的補助を必ず入れる」の集約点。
      *         固定ギミックのボスは対応する参照から、刻まれし者は
@@ -1674,6 +1847,100 @@ namespace
     }
 
     /**
+     * @brief  アビリティ1列ぶん(ヘッダ+行+「…」)を描画する
+     * @param  col        列番号 (0=消費, 1=パッシブ)
+     * @param  header     列見出し
+     * @param  list       その列のグループ一覧 (使い切った消費系は除外済み)
+     * @param  clickable  消費系列なら true (任意発動ボタンで描画)
+     * @param  playerTurn 今プレイヤーが発動操作できる状況か
+     * @detail 各列は最大 ABILITY_VISIBLE_MAX 件、超過分は「…」行に集約する。
+     *         下端揃えで上へ積むため、列ごとに高さが違っても下辺が揃う。
+     */
+    void DrawAbilityColumn(int col, const char* header,
+                           const std::vector<AbilityGroup>& list,
+                           bool clickable, bool playerTurn)
+    {
+        if (list.empty()) return;
+
+        const int  n        = static_cast<int>(list.size());
+        const int  visible  = (n < ABILITY_VISIBLE_MAX) ? n : ABILITY_VISIBLE_MAX;
+        const bool showMore = n > ABILITY_VISIBLE_MAX;
+        const int  rowCount = visible + (showMore ? 1 : 0);
+        const float x       = AbilityColX(col);
+        const auto& mouse   = InputManager_GetMouseState();
+
+        Text::Draw(x, AbilityListTop(rowCount), header, TEXT_SIZE_HUD, COLOR_TEXT);
+
+        for (int i = 0; i < visible; ++i)
+        {
+            const AbilityGroup& g = list[i];
+            const float ry = AbilityRowY(i, rowCount);
+
+            if (clickable)
+            {
+                // 任意発動(消費系): クリック可能ボタン
+                const bool usable = playerTurn && GroupCanActivate(g);
+                const bool hover  = usable
+                    && mouse.x >= x && mouse.x <= x + ABILITY_BTN_W
+                    && mouse.y >= ry && mouse.y <= ry + ABILITY_BTN_H;
+
+                DirectX::XMFLOAT4 accent = usable ? COLOR_SLIDE_ARROW : COLOR_TEXT_HINT;
+                if (!usable) accent.w = 0.40f;
+                Prim::DrawRect(x - 3.0f, ry - 3.0f,
+                               ABILITY_BTN_W + 6.0f, ABILITY_BTN_H + 6.0f, accent);
+                Prim::DrawRect(x, ry, ABILITY_BTN_W, ABILITY_BTN_H,
+                               hover ? COLOR_BTN_HOVER : COLOR_BTN_BG);
+
+                // ラベル (名前 + 取得数×N + 残りチャージ)
+                char countPart[16] = "";
+                if (g.count > 1)
+                    std::snprintf(countPart, sizeof(countPart), " ×%d", g.count);
+                char label[128];
+                const int charges = GroupCharges(g);
+                if (charges >= 0)
+                    std::snprintf(label, sizeof(label), "%s%s  残%d",
+                                  g.rep->name.c_str(), countPart, charges);
+                else
+                    std::snprintf(label, sizeof(label), "%s%s",
+                                  g.rep->name.c_str(), countPart);
+                DirectX::XMFLOAT4 txtCol = COLOR_TEXT;
+                if (!usable) txtCol.w = 0.5f;
+                Text::Draw(x + 12.0f, ry + (ABILITY_BTN_H - TEXT_SIZE_HINT) * 0.5f,
+                           label, TEXT_SIZE_HINT, txtCol);
+            }
+            else
+            {
+                // パッシブ: テキスト表示のみ
+                char rowBuf[128];
+                if (g.count > 1)
+                    std::snprintf(rowBuf, sizeof(rowBuf), "・%s ×%d",
+                                  g.rep->name.c_str(), g.count);
+                else
+                    std::snprintf(rowBuf, sizeof(rowBuf), "・%s", g.rep->name.c_str());
+                Text::Draw(x, ry + (ABILITY_ROW_H - TEXT_SIZE_HINT) * 0.5f,
+                           rowBuf, TEXT_SIZE_HINT, COLOR_TEXT_HINT);
+            }
+        }
+
+        /*--- 超過分: 「…」行 (クリックで履歴ポップアップを開く) ---*/
+        if (showMore)
+        {
+            const float ry = AbilityRowY(visible, rowCount);
+            const bool hover = !g_AbilityPopupOpen
+                && mouse.x >= x && mouse.x <= x + ABILITY_BTN_W
+                && mouse.y >= ry && mouse.y <= ry + ABILITY_BTN_H;
+            Prim::DrawRect(x - 3.0f, ry - 3.0f,
+                           ABILITY_BTN_W + 6.0f, ABILITY_BTN_H + 6.0f, COLOR_TEXT_HINT);
+            Prim::DrawRect(x, ry, ABILITY_BTN_W, ABILITY_BTN_H,
+                           hover ? COLOR_BTN_HOVER : COLOR_BTN_BG);
+            char moreLabel[64];
+            std::snprintf(moreLabel, sizeof(moreLabel), "…  他%d件を見る", n - visible);
+            Text::Draw(x + 12.0f, ry + (ABILITY_BTN_H - TEXT_SIZE_HINT) * 0.5f,
+                       moreLabel, TEXT_SIZE_HINT, COLOR_TEXT);
+        }
+    }
+
+    /**
      * @brief  HUD (残時間・手番・ボス名・所持アビリティ) を描画する
      */
     void DrawHud()
@@ -1693,6 +1960,15 @@ namespace
                 ? COLOR_TEXT_URGENT : COLOR_TEXT;
         if (g_TimerFlash > 0.0) timeColor = COLOR_TEXT_WIN;  // 時間加算フラッシュ
         Text::Draw(24.0f, 24.0f, buf, TEXT_SIZE_HUD, timeColor);
+
+        /*--- 設定キーの案内 (右下、控えめに) ---*/
+        {
+            const float screenH = static_cast<float>(Direct3D_GetBackBufferHeight());
+            const char* sHint = "O 設定";
+            const float sw = Text::MeasureWidth(sHint, TEXT_SIZE_HINT);
+            Text::Draw(screenW - sw - 24.0f, screenH - 30.0f,
+                       sHint, TEXT_SIZE_HINT, COLOR_TEXT_HINT);
+        }
 
         /*--- アビリティ発動直後の浮き上がりフラッシュ表示 ---*/
         if (g_TimerFlash > 0.0 && !g_FlashText.empty())
@@ -1746,104 +2022,24 @@ namespace
         }
         // 盤面ギミックの方向/回転/重力/連鎖は DrawGimmickIndicators で可視化
 
-        /*--- 所持アビリティ (画面左下) ---*/
-        // 5グループまで表示し、超過分は「……」行から履歴ポップアップへ。
+        /*--- 所持アビリティ (画面左下: 消費系 / パッシブ の2列) ---*/
+        // 各列10件まで表示し、超過は「…」行から履歴ポップアップへ。
+        // 使い切った消費系(残0)は BuildAbilityGroups の時点で除外済み。
         const auto groups = BuildAbilityGroups();
         if (!groups.empty())
         {
-            const int  groupCount = static_cast<int>(groups.size());
-            const int  visible    = (groupCount < ABILITY_VISIBLE_MAX)
-                                   ? groupCount : ABILITY_VISIBLE_MAX;
-            const bool showMore   = groupCount > ABILITY_VISIBLE_MAX;
-            const int  rowCount   = visible + (showMore ? 1 : 0);
-            const float listTop   = AbilityListTop(rowCount);
-            Text::Draw(ABILITY_LIST_X, listTop, "所持アビリティ",
-                       TEXT_SIZE_HUD, COLOR_TEXT);
+            std::vector<AbilityGroup> cons, pass;   // 消費系 / パッシブ
+            for (const auto& g : groups)
+                (g.rep->activatable ? cons : pass).push_back(g);
 
-            const auto& mouse = InputManager_GetMouseState();
             const bool playerTurn =
                 (g_State.result == MatchResult::Playing
                  && g_State.currentPlayer == Piece::Player
                  && !IsEffectAnimating()
                  && !g_AbilityPopupOpen);
 
-            for (int i = 0; i < visible; ++i)
-            {
-                const AbilityGroup& g = groups[i];
-                const float ry = AbilityRowY(i, rowCount);
-
-                if (g.rep->activatable)
-                {
-                    // 任意発動(消費系): クリック可能ボタン
-                    const bool usable = playerTurn && GroupCanActivate(g);
-                    const bool hover  = usable
-                        && mouse.x >= ABILITY_LIST_X
-                        && mouse.x <= ABILITY_LIST_X + ABILITY_BTN_W
-                        && mouse.y >= ry && mouse.y <= ry + ABILITY_BTN_H;
-
-                    // 縁取り (発動可ならアクセント色、不可なら半透明)
-                    DirectX::XMFLOAT4 accent = usable ? COLOR_SLIDE_ARROW
-                                                      : COLOR_TEXT_HINT;
-                    if (!usable) accent.w = 0.40f;
-                    Prim::DrawRect(ABILITY_LIST_X - 3.0f, ry - 3.0f,
-                                   ABILITY_BTN_W + 6.0f, ABILITY_BTN_H + 6.0f, accent);
-                    Prim::DrawRect(ABILITY_LIST_X, ry, ABILITY_BTN_W, ABILITY_BTN_H,
-                                   hover ? COLOR_BTN_HOVER : COLOR_BTN_BG);
-
-                    // ラベル (名前 + 取得数×N + 残りチャージ)
-                    char countPart[16] = "";
-                    if (g.count > 1)
-                        std::snprintf(countPart, sizeof(countPart), " ×%d", g.count);
-                    char label[128];
-                    const int charges = GroupCharges(g);
-                    if (charges >= 0)
-                        std::snprintf(label, sizeof(label), "%s%s  残%d",
-                                      g.rep->name.c_str(), countPart, charges);
-                    else
-                        std::snprintf(label, sizeof(label), "%s%s",
-                                      g.rep->name.c_str(), countPart);
-                    DirectX::XMFLOAT4 txtCol = COLOR_TEXT;
-                    if (!usable) txtCol.w = 0.5f;
-                    Text::Draw(ABILITY_LIST_X + 12.0f,
-                               ry + (ABILITY_BTN_H - TEXT_SIZE_HINT) * 0.5f,
-                               label, TEXT_SIZE_HINT, txtCol);
-                }
-                else
-                {
-                    // パッシブ: テキスト表示のみ
-                    char rowBuf[128];
-                    if (g.count > 1)
-                        std::snprintf(rowBuf, sizeof(rowBuf), "・%s ×%d",
-                                      g.rep->name.c_str(), g.count);
-                    else
-                        std::snprintf(rowBuf, sizeof(rowBuf), "・%s",
-                                      g.rep->name.c_str());
-                    Text::Draw(ABILITY_LIST_X,
-                               ry + (ABILITY_ROW_H - TEXT_SIZE_HINT) * 0.5f,
-                               rowBuf, TEXT_SIZE_HINT, COLOR_TEXT_HINT);
-                }
-            }
-
-            /*--- 超過分: 「……」行 (クリックで履歴ポップアップを開く) ---*/
-            if (showMore)
-            {
-                const float ry = AbilityRowY(visible, rowCount);
-                const bool hover = !g_AbilityPopupOpen
-                    && mouse.x >= ABILITY_LIST_X
-                    && mouse.x <= ABILITY_LIST_X + ABILITY_BTN_W
-                    && mouse.y >= ry && mouse.y <= ry + ABILITY_BTN_H;
-                Prim::DrawRect(ABILITY_LIST_X - 3.0f, ry - 3.0f,
-                               ABILITY_BTN_W + 6.0f, ABILITY_BTN_H + 6.0f,
-                               COLOR_TEXT_HINT);
-                Prim::DrawRect(ABILITY_LIST_X, ry, ABILITY_BTN_W, ABILITY_BTN_H,
-                               hover ? COLOR_BTN_HOVER : COLOR_BTN_BG);
-                char moreLabel[64];
-                std::snprintf(moreLabel, sizeof(moreLabel),
-                              "……  他%d件を見る", groupCount - visible);
-                Text::Draw(ABILITY_LIST_X + 12.0f,
-                           ry + (ABILITY_BTN_H - TEXT_SIZE_HINT) * 0.5f,
-                           moreLabel, TEXT_SIZE_HINT, COLOR_TEXT);
-            }
+            DrawAbilityColumn(0, "消費",     cons, true,  playerTurn);
+            DrawAbilityColumn(1, "パッシブ", pass, false, playerTurn);
         }
     }
 
@@ -1955,6 +2151,10 @@ namespace
     void DrawGameOverOverlay()
     {
         if (g_State.result == MatchResult::Playing) return;
+
+        // 終局の着手・効果アニメを見せ切るまでオーバーレイは出さない。
+        // (最後のマークが着地してから「勝利！」と報酬選択を提示する)
+        if (IsEffectAnimating() || g_LastPlacedTimer > 0.0) return;
 
         const float screenW = static_cast<float>(Direct3D_GetBackBufferWidth());
         const float screenH = static_cast<float>(Direct3D_GetBackBufferHeight());
@@ -2208,6 +2408,8 @@ void Game_Initialize()
 
 void Game_Finalize()
 {
+    // 他シーンへ揺れを持ち越さないよう、画面オフセットを必ず戻す
+    Sprite_SetViewOffset(0.0f, 0.0f);
 }
 
 //======================================
@@ -2224,20 +2426,63 @@ void Game_Update(double elapsed_time)
     g_AnimClock += elapsed_time;  // シェブロン脈動用クロック
     if (g_TimerFlash    > 0.0) g_TimerFlash    -= elapsed_time;
     if (g_ImmortalFlash > 0.0) g_ImmortalFlash -= elapsed_time;
+    if (g_WinFlash      > 0.0) g_WinFlash      -= elapsed_time;
 
-    // 勝敗が確定した瞬間に一度だけ結果音を鳴らす (Playing→終局の遷移を検出)
+    View3D::UpdateImpact(elapsed_time);  // 着手の衝撃(盤面の傾き振動)を減衰させる
+
+    // 画面シェイク: 残り時間に比例して振幅を減衰させ、全描画へオフセットを適用する。
+    // (Sprite側でシフトするため盤面・駒・HUD・3D投影がまとめて揺れる)
+    if (g_ShakeTime > 0.0)
+    {
+        g_ShakeTime -= elapsed_time;
+        if (g_ShakeTime < 0.0) g_ShakeTime = 0.0;
+        const double amp = g_ShakeMag * (g_ShakeDur > 0.0 ? g_ShakeTime / g_ShakeDur : 0.0);
+        Sprite_SetViewOffset(
+            static_cast<float>(amp * std::sin(g_AnimClock * 47.0)),
+            static_cast<float>(amp * std::cos(g_AnimClock * 41.0)));
+    }
+    else
+    {
+        Sprite_SetViewOffset(0.0f, 0.0f);
+    }
+
+    // 勝敗が確定した瞬間に一度だけ結果音と決着演出をセットする (Playing→終局の遷移を検出)
     if (g_State.result != g_PrevResult)
     {
         if (g_State.result == MatchResult::Win)
         {
-            SoundManager_PlaySE(SOUND_SE_WIN);
+            SoundManager_PlayResultTheme(SOUND_SE_WIN);   // 対戦BGMを止めて単独再生
+            g_WinLineSide = Piece::Player;
+            g_WinLine     = WinCheck::FindWinningLine(g_State.board, Piece::Player);
+            g_WinFlash    = WIN_FLASH_DURATION;
+            TriggerShake(15.0, 0.45);
+            g_HitStop = 0.07;   // 決着の一瞬を凍結して手応えを出す
         }
-        else if (g_State.result == MatchResult::Lose
-              || g_State.result == MatchResult::Timeout)
+        else if (g_State.result == MatchResult::Lose)
         {
-            SoundManager_PlaySE(SOUND_SE_LOSE);
+            SoundManager_PlayResultTheme(SOUND_SE_LOSE);  // 対戦BGMを止めて単独再生
+            g_WinLineSide = Piece::Enemy;
+            g_WinLine     = WinCheck::FindWinningLine(g_State.board, Piece::Enemy);
+            g_WinFlash    = WIN_FLASH_DURATION;
+            TriggerShake(13.0, 0.40);
+            g_HitStop = 0.07;
+        }
+        else if (g_State.result == MatchResult::Timeout)
+        {
+            SoundManager_PlayResultTheme(SOUND_SE_LOSE);  // 対戦BGMを止めて単独再生
+            g_WinLineSide = Piece::Enemy;   // 時間切れはライン無し・赤フラッシュのみ
+            g_WinLine.clear();
+            g_WinFlash    = WIN_FLASH_DURATION;
+            TriggerShake(8.0, 0.35);
         }
         g_PrevResult = g_State.result;
+    }
+
+    // ヒットストップ中はゲーム進行を凍結する (シェイク等の演出系は上で更新済み)
+    if (g_HitStop > 0.0)
+    {
+        g_HitStop -= elapsed_time;
+        return;
     }
 
     // マウスホイールの変化量を算出 (履歴ポップアップのスクロールに使用)
@@ -2276,6 +2521,16 @@ void Game_Update(double elapsed_time)
             g_LastPlacedTimer -= elapsed_time;
             if (g_LastPlacedTimer < 0.0) g_LastPlacedTimer = 0.0;
         }
+        return;
+    }
+
+    /*--- 終局直後: 最後の着手の演出を見せ切ってから終了UIへ移る ---*/
+    //   勝敗が確定しても、直前に置いたマスの着地・グロー演出が残っている
+    //   間は終了オーバーレイ/報酬ボタンを出さず、最後のマークを見せ切る。
+    if (g_State.result != MatchResult::Playing && g_LastPlacedTimer > 0.0)
+    {
+        g_LastPlacedTimer -= elapsed_time;
+        if (g_LastPlacedTimer < 0.0) g_LastPlacedTimer = 0.0;
         return;
     }
 
@@ -2319,12 +2574,13 @@ void Game_Update(double elapsed_time)
         switch (go.action)
         {
         case GameOverAction::Reward:
-            // 通常ボス撃破: 固有報酬を確定付与し、別枠の3択を提示する
-            // (企画書の「ボス固有能力(確定)＋3択」= 1戦で2つ獲得)
-            if (g_Boss) RunState::GrantBossReward(g_Boss->GetRewardAbility());
+            // 通常ボス撃破: 固有スキルを「保留報酬」として提示し、撃破画面で
+            // 獲得可否(はい/いいえ)を選ばせる。その後に別枠の通常抽選(3択)へ進む。
+            if (g_Boss)
+                RunState::SetPendingBossReward(g_Boss->GetRewardAbility(),
+                                               g_Boss->name, g_Boss->description);
             RunState::IncrementBoss();
-            RunState::GenerateRewardChoices();
-            Scene_Change(Scene::REWARD);
+            Scene_Change(Scene::BOSS_REWARD);
             break;
         case GameOverAction::Result:
             // ラン終了(最終ボス撃破=クリア / 敗北) → 戦績を確定しリザルトへ
@@ -2371,8 +2627,11 @@ void Game_Draw()
     }
 
     DrawBoardAndPieces();     // 盤面と駒
+    DrawPlacementImpact();    // 直近設置の衝撃リング
+    DrawWinningLine();        // 勝利ラインのグロー強調 (決着時)
     DrawGimmickIndicators();  // ボスギミックの視覚的補助 (方向/回転/重力/連鎖)
     DrawImmortalBanner();     // 不死発動 (敗北打ち消し) のバナー
+    DrawWinFlash();           // 決着の全画面フラッシュ (勝=緑/敗=赤)
     DrawHud();                // HUD (残時間/手番/アビリティ)
     DrawAbilityPopup();       // アビリティ履歴ポップアップ
     DrawGameOverOverlay();    // ゲームオーバー時のオーバーレイ

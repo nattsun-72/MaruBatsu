@@ -27,6 +27,10 @@
 #include "ability/abilities/spiral_shard.h"
 #include "ability/abilities/time_stop.h"
 #include "ability/abilities/two_hands.h"
+#include "ability/abilities/curses.h"
+#include "ability/abilities/legendaries.h"
+#include "ability/abilities/commons.h"
+#include "ability/abilities/rares.h"
 
 #include "config.h"
 
@@ -95,6 +99,54 @@ namespace AbilityPool
             std::make_shared<TimeStopAbility>(),       // 時間停止 (L/一度限り)
             std::make_shared<AbsoluteVictoryAbility>(),// 絶対勝利 (L/一度限り)
             std::make_shared<ImpatienceAbility>(),     // 焦燥 (呪い/一度限り)
+
+            //--- 呪い 10種 (ハイリスク・ハイリターン) ---
+            std::make_shared<ShuraStanceCurse>(),      // 修羅の構え
+            std::make_shared<CornerCravingCurse>(),    // 四隅の渇望
+            std::make_shared<MirrorBackfireCurse>(),   // 鏡返しの呪
+            std::make_shared<TimeDebtCurse>(),         // 時の負債
+            std::make_shared<ReversedCurse>(),         // 逆位置の呪
+            std::make_shared<DoubleEdgedAltarCurse>(), // 諸刃の祭壇
+            std::make_shared<FrenzyCurse>(),           // 狂宴
+            std::make_shared<BluffCurse>(),            // 痩せ我慢
+            std::make_shared<ChaosBoardCurse>(),       // 混沌の盤
+            std::make_shared<HellfireHourCurse>(),     // 業火の刻
+
+            //--- レジェンダリー 10種 (ラスボス撃破で解放) ---
+            std::make_shared<GodspeedLegend>(),        // 神速
+            std::make_shared<GrandVisionLegend>(),     // 大局観
+            std::make_shared<AbsoluteBarrierLegend>(), // 絶対防壁
+            std::make_shared<EternalReturnLegend>(),   // 永劫回帰
+            std::make_shared<DoubleThinkLegend>(),     // 二重思考
+            std::make_shared<GenesisLegend>(),         // 創世
+            std::make_shared<EngravedBlessingLegend>(),// 刻印の祝福
+            std::make_shared<KingsMajestyLegend>(),    // 王の威光
+            std::make_shared<PeerlessLegend>(),        // 無双
+            std::make_shared<FinalDecreeLegend>(),     // 終焉の宣告
+
+            //--- コモン 10種 (基礎調整: 思考時間管理) ---
+            std::make_shared<ReadyMindCommon>(),       // 心構え
+            std::make_shared<CalmMindCommon>(),        // 平常心
+            std::make_shared<BreatherCommon>(),        // 一服
+            std::make_shared<DeepPlanCommon>(),        // 深謀遠慮
+            std::make_shared<SkimCommon>(),            // 拾い読み
+            std::make_shared<ReserveCommon>(),         // 底力
+            std::make_shared<ShortRestCommon>(),       // 小休止
+            std::make_shared<ReconsiderCommon>(),      // 再考
+            std::make_shared<QuickSightCommon>(),      // 早見え
+            std::make_shared<DiscernCommon>(),         // 見極め
+
+            //--- レア 10種 (立ち回りを変える) ---
+            std::make_shared<SquareSovereignRare>(),   // 四角の覇
+            std::make_shared<TorrentRare>(),           // 奔流
+            std::make_shared<EdgeFormationRare>(),     // 布陣の妙
+            std::make_shared<AvalancheRare>(),         // 雪崩
+            std::make_shared<WhirlwindRare>(),         // 旋風
+            std::make_shared<CentripetalRare>(),       // 求心
+            std::make_shared<UnyieldingRare>(),        // 不屈の魂
+            std::make_shared<OnslaughtRare>(),         // 快進撃
+            std::make_shared<ForesightRare>(),         // 先見の明
+            std::make_shared<ReinforcementRare>(),     // 増援
         };
     }
 
@@ -112,6 +164,12 @@ namespace AbilityPool
     PickRandom(int count, const std::vector<std::string>& excludeNames)
     {
         auto all = CreateAll();
+
+        // ボス固有報酬専用のアビリティは通常抽選に載せない
+        // (氷駒・螺旋の欠片等は、対応ボスの撃破時にのみ獲得できる)
+        all.erase(std::remove_if(all.begin(), all.end(),
+            [](const std::shared_ptr<Ability>& a) { return a->bossExclusive; }),
+            all.end());
 
         // 除外名に該当する候補 (取得済みの一度限りアビリティ等) を取り除く
         all.erase(std::remove_if(all.begin(), all.end(),

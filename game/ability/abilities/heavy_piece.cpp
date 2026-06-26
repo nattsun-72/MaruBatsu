@@ -14,10 +14,11 @@
 //======================================
 HeavyPieceAbility::HeavyPieceAbility()
 {
-    name        = "重駒";
-    description = "自駒が重くなり\n滑り・落下を受けない";
-    rarity      = Rarity::Rare;   // 企画書準拠(レア)
-    unique      = true;   // 全自駒に効くため2個目は無意味
+    name          = "重駒";
+    description   = "自駒が重くなり\n滑り・落下を受けない";
+    rarity        = Rarity::Rare;   // 企画書準拠(レア)
+    bossExclusive = true;   // 重力の暴君 撃破でのみ獲得
+    unique        = true;   // 全自駒に効くため2個目は無意味
 }
 
 //======================================

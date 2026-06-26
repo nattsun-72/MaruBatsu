@@ -30,6 +30,10 @@ static ID3D11DeviceContext* g_pContext = nullptr;
 static float g_ScreenWidth = 0.0f;
 static float g_ScreenHeight = 0.0f;
 
+// 全描画に乗せる画面オフセット（画面シェイク用。Sprite_Begin が投影へ反映）
+static float g_ViewOffsetX = 0.0f;
+static float g_ViewOffsetY = 0.0f;
+
 // 頂点構造体
 struct Vertex
 {
@@ -87,11 +91,20 @@ void Sprite_Begin()
     g_ScreenWidth = static_cast<float>(Direct3D_GetBackBufferWidth());
     g_ScreenHeight = static_cast<float>(Direct3D_GetBackBufferHeight());
 
-    // 頂点シェーダーにプロジェクション行列（2D用平行投影）を設定
-    Shader_SetProjectionMatrix(XMMatrixOrthographicOffCenterLH(0.0f, g_ScreenWidth, g_ScreenHeight, 0.0f, 0.0f, 1.0f));
+    // 頂点シェーダーにプロジェクション行列（2D用平行投影）を設定。
+    // 視野窓を g_ViewOffset 分ずらすことで、全描画を一様にシフトする（画面シェイク）。
+    Shader_SetProjectionMatrix(XMMatrixOrthographicOffCenterLH(
+        -g_ViewOffsetX, g_ScreenWidth  - g_ViewOffsetX,
+        g_ScreenHeight - g_ViewOffsetY, -g_ViewOffsetY, 0.0f, 1.0f));
 
     // シェーダーを開始（共通設定）
     Shader_Begin();
+}
+
+void Sprite_SetViewOffset(float x, float y)
+{
+    g_ViewOffsetX = x;
+    g_ViewOffsetY = y;
 }
 
 // 描画関数群（Texture ID版）

@@ -83,6 +83,31 @@ namespace RunState
     /** @brief 直近に確定付与したボス報酬を取得 (報酬画面の表示用。無ければ null) */
     const std::shared_ptr<Ability>& LastBossReward();
 
+    //======================================
+    // 撃破ボスの固有スキル提示 (獲得を選択できる保留報酬)
+    //   ボス撃破画面で「○○を撃破！スキル△△を獲得しますか？」を出し、
+    //   はい/いいえ を選ばせてから通常抽選へ進むための受け渡し。
+    //======================================
+    /**
+     * @brief  撃破ボスが提示する固有スキルを「保留中」として設定する
+     * @param  reward   撃破ボスの GetRewardAbility() が返す弱化版スキル
+     * @param  bossName 撃破したボス名 (画面の見出し用)
+     * @param  bossDesc 撃破したボスのギミック説明 (画面のフレーバー用)
+     */
+    void SetPendingBossReward(std::shared_ptr<Ability> reward,
+                              const std::string& bossName,
+                              const std::string& bossDesc);
+    /** @brief 保留中のボススキル (無ければ null) */
+    const std::shared_ptr<Ability>& PendingBossReward();
+    /** @brief 保留中報酬に紐づくボス名 */
+    const std::string& PendingBossName();
+    /** @brief 保留中報酬に紐づくボスのギミック説明 */
+    const std::string& PendingBossDesc();
+    /** @brief 保留中スキルを所持へ加える (「はい」)。一度限り所持済みなら加えない。 */
+    void AcceptPendingBossReward();
+    /** @brief 保留中スキルを付与せず破棄する (「いいえ」) */
+    void DeclinePendingBossReward();
+
     /** @brief 報酬の3択をレアリティ重み付き抽選で生成する (確定報酬とは別枠) */
     void GenerateRewardChoices();
 

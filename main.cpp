@@ -105,6 +105,10 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE, _In_ LPSTR,
     SpriteAnim_Initialize();
     Fade_Initialize();
 
+    // 保存済みのユーザー設定(音量/VSync)を適用する。
+    // サウンド・Direct3D の初期化後に呼ぶことで、各サブシステムへ確実に反映される。
+    GameSettings_Load();
+
     // デバッグテキスト初期化
     hal::DebugText debugText(Direct3D_GetDevice(), Direct3D_GetContext(),
         L"assets/consolab_ascii_512.png",

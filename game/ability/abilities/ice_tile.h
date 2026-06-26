@@ -30,8 +30,9 @@ public:
     //--------------------------------------
     // メンバ変数
     //--------------------------------------
-    Direction slideDir  = Direction::Down;   // 滑る方向
-    Piece     ownerSide = Piece::Player;     // 効果対象の陣営
+    Direction slideDir      = Direction::Down;   // 滑る方向
+    Piece     ownerSide     = Piece::Player;     // 効果対象の陣営
+    int       slideDistance = 2;                 // 1設置あたりの滑走マス数(ボス報酬は強化)
 
     IceTileAbility();
 

@@ -121,6 +121,18 @@
     <ClCompile Include="game\ability\abilities\contemplation.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
+    <ClCompile Include="game\ability\abilities\curses.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\legendaries.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\commons.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
+    <ClCompile Include="game\ability\abilities\rares.cpp">
+      <Filter>game\ability\abilities</Filter>
+    </ClCompile>
     <ClCompile Include="game\ability\abilities\focus.cpp">
       <Filter>game\ability\abilities</Filter>
     </ClCompile>
@@ -233,6 +245,12 @@
       <Filter>game\scene</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\scene.cpp">
+      <Filter>game\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\boss_reward.cpp">
+      <Filter>game\scene</Filter>
+    </ClCompile>
+    <ClCompile Include="game\scene\settings_overlay.cpp">
       <Filter>game\scene</Filter>
     </ClCompile>
     <ClCompile Include="game\scene\title.cpp">
@@ -363,6 +381,18 @@
     <ClInclude Include="game\ability\abilities\contemplation.h">
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
+    <ClInclude Include="game\ability\abilities\curses.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\legendaries.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\commons.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
+    <ClInclude Include="game\ability\abilities\rares.h">
+      <Filter>game\ability\abilities</Filter>
+    </ClInclude>
     <ClInclude Include="game\ability\abilities\focus.h">
       <Filter>game\ability\abilities</Filter>
     </ClInclude>
@@ -480,6 +510,12 @@
     <ClInclude Include="game\scene\scene.h">
       <Filter>game\scene</Filter>
     </ClInclude>
+    <ClInclude Include="game\scene\boss_reward.h">
+      <Filter>game\scene</Filter>
+    </ClInclude>
+    <ClInclude Include="game\scene\settings_overlay.h">
+      <Filter>game\scene</Filter>
+    </ClInclude>
     <ClInclude Include="game\scene\title.h">
       <Filter>game\scene</Filter>
     </ClInclude>
@@ -538,5 +574,11 @@
     <None Include="utils\DirectXTex.inl">
       <Filter>utils</Filter>
     </None>
+    <None Include="assets\game_config.json">
+      <Filter>config</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\white.png" />
   </ItemGroup>
 </Project>

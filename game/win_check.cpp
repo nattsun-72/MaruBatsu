@@ -79,6 +79,43 @@ namespace WinCheck
     }
 
     //======================================
+    // 勝利ラインのマス列取得 (演出用)
+    //======================================
+    std::vector<Vec2> FindWinningLine(const Board& board, Piece player,
+                                      int required, bool includeDiagonals)
+    {
+        std::vector<Vec2> line;
+        if (player == Piece::Empty || required <= 0) return line;
+
+        const int dirCount = includeDiagonals ? DIR_COUNT : 2;
+        for (int y = 0; y < board.height; ++y)
+        {
+            for (int x = 0; x < board.width; ++x)
+            {
+                if (board.Get(x, y) != player) continue;
+                for (int d = 0; d < dirCount; ++d)
+                {
+                    const int dx = DIRS[d][0];
+                    const int dy = DIRS[d][1];
+                    if (board.Get(x - dx, y - dy) == player) continue;   // 始点のみ
+                    if (LineLengthFrom(board, x, y, dx, dy, player) >= required)
+                    {
+                        int cx = x, cy = y;
+                        for (int i = 0; i < required; ++i)
+                        {
+                            line.push_back({ cx, cy });
+                            cx += dx;
+                            cy += dy;
+                        }
+                        return line;
+                    }
+                }
+            }
+        }
+        return line;
+    }
+
+    //======================================
     // 最大連続長の取得
     //======================================
     int CountMaxLine(const Board& board, Piece player)

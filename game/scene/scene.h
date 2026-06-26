@@ -21,11 +21,12 @@
  */
 enum class Scene
 {
-    TITLE,   // タイトル画面
-    GAME,    // ゲーム本編 (盤面プレイ)
-    REWARD,  // 撃破報酬の選択画面
-    RESULT,  // ラン終了時のリザルト画面
-    HISTORY, // 戦績履歴の閲覧画面
+    TITLE,       // タイトル画面
+    GAME,        // ゲーム本編 (盤面プレイ)
+    BOSS_REWARD, // ボス撃破時の固有スキル獲得画面 (はい/いいえ)
+    REWARD,      // 撃破報酬の選択画面 (通常抽選3択)
+    RESULT,      // ラン終了時のリザルト画面
+    HISTORY,     // 戦績履歴の閲覧画面
 };
 
 //======================================
@@ -54,5 +55,8 @@ void Scene_Refresh();
  * @param scene 遷移先シーン
  */
 void Scene_Change(Scene scene);
+
+/** @brief 現在表示中のシーンを取得する (オーバーレイ等が文脈判断に使う) */
+Scene Scene_Current();
 
 #endif // SCENE_H

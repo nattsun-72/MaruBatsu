@@ -10,6 +10,10 @@
 #include "game_window.h"
 #include "direct3d.h"
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include <system_error>
 
  // 内部変数
 static float g_Sensitivity = SettingsRange::SENSITIVITY_DEFAULT;
@@ -42,8 +46,46 @@ void GameSettings_Initialize()
 
 void GameSettings_Finalize()
 {
-    // 現時点では特に何もしない
-    // 将来的にはファイルへの保存などを行う
+    // 終了時に最新の設定を書き出す (オーバーレイ閉時にも保存するため通常は冗長)
+    GameSettings_Save();
+}
+
+// 永続化 (save/settings.dat, BOMなしUTF-8テキスト, "キー 値" 1行1項目)
+
+namespace
+{
+    const char* SETTINGS_DIR  = "save";
+    const char* SETTINGS_PATH = "save/settings.dat";
+}
+
+void GameSettings_Load()
+{
+    std::ifstream ifs(SETTINGS_PATH, std::ios::binary);
+    if (!ifs) return;   // 保存なし → 既定値のまま
+
+    std::string key;
+    // "キー 値" を順に読む。未知キー/欠落は無視し、既知キーのみ適用する。
+    // 適用は setter 経由なので、クランプとサブシステムへの反映も同時に行われる。
+    while (ifs >> key)
+    {
+        if (key == "bgm")         { float v; if (ifs >> v) GameSettings_SetBGMVolume(v); }
+        else if (key == "se")     { float v; if (ifs >> v) GameSettings_SetSEVolume(v); }
+        else if (key == "vsync")  { int  v; if (ifs >> v) GameSettings_SetVSync(v != 0); }
+        else                      { std::string skip; std::getline(ifs, skip); }  // 未知キー行を読み飛ばす
+    }
+}
+
+void GameSettings_Save()
+{
+    std::error_code ec;
+    std::filesystem::create_directories(SETTINGS_DIR, ec);
+
+    std::ofstream ofs(SETTINGS_PATH, std::ios::binary | std::ios::trunc);
+    if (!ofs) return;
+
+    ofs << "bgm "   << g_BGMVolume << "\n";
+    ofs << "se "    << g_SEVolume  << "\n";
+    ofs << "vsync " << (g_VSync ? 1 : 0) << "\n";
 }
 
 // 視点感度

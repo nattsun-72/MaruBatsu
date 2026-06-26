@@ -13,6 +13,7 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -23,14 +24,27 @@ namespace
 {
     std::vector<std::shared_ptr<Ability>> g_PlayerAbilities;  // 所持アビリティ(累積)
     std::vector<std::shared_ptr<Ability>> g_RewardChoices;    // 報酬画面の3択
-    int    g_BossIndex  = 0;        // 現在挑戦中のボスindex
-    bool   g_RunCleared = false;    // 直近ランをクリアしたか(制覇表示用)
-    double g_RunTime    = 0.0;      // ランの累積プレイ時間(秒)
-    int    g_RunTurns   = 0;        // ランの累積ターン数
-    RunResult g_LastResult;         // 直近に確定した戦績(リザルト画面用)
+    int          g_BossIndex     = 0;     // 現在挑戦中のボスindex
+    bool         g_RunCleared    = false; // 直近ランをクリアしたか(制覇表示用)
+    double       g_RunTime       = 0.0;   // ランの累積プレイ時間(秒)
+    int          g_RunTurns      = 0;     // ランの累積ターン数
+    unsigned int g_BossOrderSeed = 0;     // 今ランのボス出現順シャッフル種(セーブで永続)
+    RunResult    g_LastResult;            // 直近に確定した戦績(リザルト画面用)
+
+    /** @brief ボス出現順シャッフル用の新しい乱数シードを生成する */
+    unsigned int NewBossOrderSeed()
+    {
+        std::random_device rd;
+        return static_cast<unsigned int>(rd());
+    }
 
     // 直近に確定付与したボス報酬 (報酬画面の表示用)
     std::shared_ptr<Ability> g_LastBossReward;
+
+    // 撃破ボスが提示する保留中のスキル (ボス撃破画面で獲得可否を選ぶ)
+    std::shared_ptr<Ability> g_PendingBossReward;
+    std::string              g_PendingBossName;
+    std::string              g_PendingBossDesc;
 
     // メタ進行 (ラン跨ぎで永続。save/progress.dat)
     const char* PROGRESS_PATH      = "save/progress.dat";
@@ -136,10 +150,18 @@ namespace RunState
         g_PlayerAbilities.clear();
         g_RewardChoices.clear();
         g_LastBossReward.reset();
+        g_PendingBossReward.reset();
+        g_PendingBossName.clear();
+        g_PendingBossDesc.clear();
         g_BossIndex   = 0;
         g_RunCleared  = false;
         g_RunTime     = 0.0;
         g_RunTurns    = 0;
+
+        // 新ランのボス出現順を確定する: 新しいシードでベース順を控えめにシャッフル。
+        // ラン中はこの並びで固定され、SaveRun でシードごと保存される。
+        g_BossOrderSeed = NewBossOrderSeed();
+        BossRoster::ApplyRunSeed(g_BossOrderSeed);
     }
 
     //======================================
@@ -244,6 +266,40 @@ namespace RunState
 
     const std::shared_ptr<Ability>& LastBossReward() { return g_LastBossReward; }
 
+    //======================================
+    // 撃破ボスの固有スキル提示 (保留報酬)
+    //======================================
+    void SetPendingBossReward(std::shared_ptr<Ability> reward,
+                              const std::string& bossName,
+                              const std::string& bossDesc)
+    {
+        g_PendingBossReward = std::move(reward);
+        g_PendingBossName   = bossName;
+        g_PendingBossDesc   = bossDesc;
+    }
+
+    const std::shared_ptr<Ability>& PendingBossReward() { return g_PendingBossReward; }
+    const std::string&              PendingBossName()   { return g_PendingBossName; }
+    const std::string&              PendingBossDesc()   { return g_PendingBossDesc; }
+
+    void AcceptPendingBossReward()
+    {
+        // 「はい」: 保留中スキルを所持へ加える (一度限り所持済みなら GrantBossReward が弾く)
+        if (g_PendingBossReward) GrantBossReward(g_PendingBossReward);
+        g_PendingBossReward.reset();
+        g_PendingBossName.clear();
+        g_PendingBossDesc.clear();
+    }
+
+    void DeclinePendingBossReward()
+    {
+        // 「いいえ」: 付与せず破棄する
+        g_PendingBossReward.reset();
+        g_PendingBossName.clear();
+        g_PendingBossDesc.clear();
+        g_LastBossReward.reset();
+    }
+
     void GenerateRewardChoices()
     {
         const int choiceCount = Config::GetInt("rules.rewardChoiceCount", 3);
@@ -310,10 +366,11 @@ namespace RunState
         std::ofstream ofs(SAVE_PATH, std::ios::binary | std::ios::trunc);
         if (!ofs) return;
 
-        // ヘッダ3行: ボス番号 / プレイ時間(秒) / ターン数
+        // ヘッダ4行: ボス番号 / プレイ時間(秒) / ターン数 / ボス順シャッフル種
         ofs << g_BossIndex << "\n";
         ofs << static_cast<long long>(g_RunTime) << "\n";
         ofs << g_RunTurns << "\n";
+        ofs << g_BossOrderSeed << "\n";
         // 以降: 所持アビリティ名(1行1個)
         for (const auto& a : g_PlayerAbilities)
         {
@@ -349,21 +406,56 @@ namespace RunState
         try { runTurns = std::stoi(line); }
         catch (...) { return false; }
 
-        // 以降: アビリティ名を順に復元
+        // 4行目: ボス順シャッフル種 (新形式)。旧形式(3行ヘッダ)ではここが
+        // アビリティ名のため、行全体が数値として読めなければ旧形式とみなし、
+        // その行をアビリティ名として持ち越す(後方互換)。
+        unsigned int seed     = 0;
+        bool         haveSeed = false;
+        std::string  carriedAbil;          // 旧形式で先読みしたアビリティ名
+        if (readLine(line))
+        {
+            try
+            {
+                size_t pos = 0;
+                const unsigned long v = std::stoul(line, &pos);
+                if (pos == line.size())    // 行全体が数値 = シード
+                {
+                    seed     = static_cast<unsigned int>(v);
+                    haveSeed = true;
+                }
+                else carriedAbil = line;   // 数値+余字 → アビリティ名とみなす
+            }
+            catch (...) { carriedAbil = line; }  // 非数値 = 旧形式のアビリティ名
+        }
+
+        // 以降: アビリティ名を順に復元 (旧形式は持ち越した行を先頭に)
         std::vector<std::shared_ptr<Ability>> loaded;
+        if (!carriedAbil.empty())
+        {
+            if (auto a = AbilityPool::CreateByName(carriedAbil)) loaded.push_back(a);
+        }
         while (readLine(line))
         {
             if (line.empty()) continue;
             if (auto a = AbilityPool::CreateByName(line)) loaded.push_back(a);
         }
 
+        // ボス出現順を復元する: 種があればその並びを再現、無ければ(旧セーブ)
+        // ベース順(JSON順そのもの)を使う = 従来挙動のまま。
+        if (haveSeed) BossRoster::ApplyRunSeed(seed);
+        else          BossRoster::UseBaseOrder();
+
         // 復元成功 — ラン状態へ反映
         g_BossIndex       = idx;
         g_RunTime         = runTime;
         g_RunTurns        = runTurns;
+        g_BossOrderSeed   = seed;
         g_PlayerAbilities = std::move(loaded);
         g_RewardChoices.clear();
         g_LastBossReward.reset();
+        g_PendingBossReward.reset();
+        g_PendingBossName.clear();
+        g_PendingBossDesc.clear();
         g_RunCleared      = false;
         return true;
     }

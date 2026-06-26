@@ -51,8 +51,25 @@ namespace View3D
      * @param  v 行方向の位置 (0..rows。盤外も可)
      * @param  h 盤面からの高さ (マス一辺=1)
      * @return スクリーン座標
+     * @detail 着手の衝撃(SetImpact)が有効な間は、起点からの距離に応じた
+     *         減衰振動を高さに加算し、盤面全体を着手点起点に揺らす。
      */
     P2 Project(float u, float v, float h = 0.0f);
+
+    //======================================
+    // 着手の衝撃 (盤面を着手点起点に傾けて振動させる)
+    //======================================
+    /**
+     * @brief  衝撃を開始する (駒設置時に呼ぶ)
+     * @param  cellX,cellY 起点のセル中心座標 (例: 設置マス pos の x+0.5, y+0.5)
+     */
+    void SetImpact(float cellX, float cellY);
+
+    /** @brief 衝撃の減衰を進める (毎フレーム呼ぶ) @param dt 経過秒 */
+    void UpdateImpact(double dt);
+
+    /** @brief 衝撃を即座に解除する (試合開始/リセット時) */
+    void ClearImpact();
 
     /**
      * @brief  位置 v における「1マスあたりのピクセル数」を返す

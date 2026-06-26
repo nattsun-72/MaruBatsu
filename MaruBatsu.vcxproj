@@ -167,8 +167,8 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy /D /Y "$(TargetDir)*.cso" "$(ProjectDir)assets/shader"
-if exist "$(ProjectDir)assets\sound\*.mp3" xcopy /D /Y /I "$(ProjectDir)assets\sound\*.mp3" "$(TargetDir)assets\sound\"
-if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\sound\*.wav" "$(TargetDir)assets\sound\"</Command>
+if exist "$(ProjectDir)assets\sound\bgm" xcopy /D /Y /I /S "$(ProjectDir)assets\sound\bgm" "$(TargetDir)assets\sound\bgm\"
+if exist "$(ProjectDir)assets\sound\se" xcopy /D /Y /I /S "$(ProjectDir)assets\sound\se" "$(TargetDir)assets\sound\se\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -193,8 +193,8 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     </Link>
     <PostBuildEvent>
       <Command>xcopy /D /Y "$(TargetDir)*.cso" "$(ProjectDir)assets/shader"
-if exist "$(ProjectDir)assets\sound\*.mp3" xcopy /D /Y /I "$(ProjectDir)assets\sound\*.mp3" "$(TargetDir)assets\sound\"
-if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\sound\*.wav" "$(TargetDir)assets\sound\"</Command>
+if exist "$(ProjectDir)assets\sound\bgm" xcopy /D /Y /I /S "$(ProjectDir)assets\sound\bgm" "$(TargetDir)assets\sound\bgm\"
+if exist "$(ProjectDir)assets\sound\se" xcopy /D /Y /I /S "$(ProjectDir)assets\sound\se" "$(TargetDir)assets\sound\se\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -212,6 +212,10 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     <ClCompile Include="game\ability\abilities\boss_ice_slide.cpp" />
     <ClCompile Include="game\ability\abilities\boss_spiral_rotate.cpp" />
     <ClCompile Include="game\ability\abilities\contemplation.cpp" />
+    <ClCompile Include="game\ability\abilities\curses.cpp" />
+    <ClCompile Include="game\ability\abilities\legendaries.cpp" />
+    <ClCompile Include="game\ability\abilities\commons.cpp" />
+    <ClCompile Include="game\ability\abilities\rares.cpp" />
     <ClCompile Include="game\ability\abilities\focus.cpp" />
     <ClCompile Include="game\ability\abilities\ice_tile.cpp" />
     <ClCompile Include="game\ability\abilities\absolute_victory.cpp" />
@@ -255,6 +259,7 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     <ClCompile Include="game\font_atlas.cpp" />
     <ClCompile Include="game\render_primitives.cpp" />
     <ClCompile Include="game\run_state.cpp" />
+    <ClCompile Include="game\scene\boss_reward.cpp" />
     <ClCompile Include="game\scene\history.cpp" />
     <ClCompile Include="game\scene\result.cpp" />
     <ClCompile Include="game\scene\reward.cpp" />
@@ -262,6 +267,7 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     <ClCompile Include="game\win_check.cpp" />
     <ClCompile Include="game\scene\game.cpp" />
     <ClCompile Include="game\scene\scene.cpp" />
+    <ClCompile Include="game\scene\settings_overlay.cpp" />
     <ClCompile Include="game\scene\title.cpp" />
     <ClCompile Include="game_window\game_window.cpp" />
     <ClCompile Include="input\input_manager.cpp" />
@@ -289,6 +295,10 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     <ClInclude Include="game\ability\abilities\boss_ice_slide.h" />
     <ClInclude Include="game\ability\abilities\boss_spiral_rotate.h" />
     <ClInclude Include="game\ability\abilities\contemplation.h" />
+    <ClInclude Include="game\ability\abilities\curses.h" />
+    <ClInclude Include="game\ability\abilities\legendaries.h" />
+    <ClInclude Include="game\ability\abilities\commons.h" />
+    <ClInclude Include="game\ability\abilities\rares.h" />
     <ClInclude Include="game\ability\abilities\focus.h" />
     <ClInclude Include="game\ability\abilities\ice_tile.h" />
     <ClInclude Include="game\ability\abilities\absolute_victory.h" />
@@ -338,6 +348,7 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     <ClInclude Include="game\piece.h" />
     <ClInclude Include="game\render_primitives.h" />
     <ClInclude Include="game\run_state.h" />
+    <ClInclude Include="game\scene\boss_reward.h" />
     <ClInclude Include="game\scene\history.h" />
     <ClInclude Include="game\scene\result.h" />
     <ClInclude Include="game\scene\reward.h" />
@@ -345,6 +356,7 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     <ClInclude Include="game\win_check.h" />
     <ClInclude Include="game\scene\game.h" />
     <ClInclude Include="game\scene\scene.h" />
+    <ClInclude Include="game\scene\settings_overlay.h" />
     <ClInclude Include="game\scene\title.h" />
     <ClInclude Include="game_window\game_window.h" />
     <ClInclude Include="input\input_manager.h" />
@@ -362,6 +374,7 @@ if exist "$(ProjectDir)assets\sound\*.wav" xcopy /D /Y /I "$(ProjectDir)assets\s
     <ClInclude Include="utils\WICTextureLoader11.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="assets\game_config.json" />
     <None Include="utils\DirectXTex.inl" />
   </ItemGroup>
   <ItemGroup>

@@ -6,12 +6,24 @@
   //    (ゲームを再起動せずに調整を反映できる)
   // ================================================
 
-  // --- ボス出現順 (1ラン=この並び順に対戦) ---
+  // --- ボス出現順 (1ラン=この並びをベースに対戦) ---
   //  値は各ボスの安定ID(コード名)。先頭から順に出現する。
   //  利用可能: "ice" "mirror" "spiral" "chain" "time" "gravity" "final"
   //  GUIで組み替え可: tools/boss_order_editor.html (ドラッグで並べ替え)
   //  空/未指定/全て不正なら、内部のカタログ定義順で動作する。
-  "bossOrder": [ "ice", "mirror", "spiral", "chain", "time", "gravity", "final" ],
+  //  実際の出現順は、下の bossOrderShuffle に従いラン毎に軽くシャッフルされる。
+  "bossOrder": [ "ice", "spiral", "chain", "time", "mirror", "gravity", "final" ],
+
+  // --- ボス出現順のランダム化 (bossOrder をベースに軽く前後させる) ---
+  //  毎ラン開始時、隣り合うボスを確率で入れ替える「軽い隣接スワップ」を行う。
+  //  各ボスの移動は最大±1マスで、JSONの並びから大きくは崩れない("ある程度ランダム")。
+  //  中断再開(つづきから)では、その回の並びがそのまま復元される。
+  "bossOrderShuffle": {
+    "enabled":    true,   // false で bossOrder のまま固定(従来挙動)
+    "swapChance": 0.5,    // 隣り合うボスを入れ替える確率 (0=変化なし, 1=必ず)
+    "pinFirst":   false,  // 1戦目(先頭)を固定するか
+    "pinLast":    true    // ラスボス(末尾)を固定するか (クリア判定が末尾基準のため既定ON)
+  },
 
   // --- 基本ルール ---
   "rules": {
@@ -32,16 +44,21 @@
     "boardCenterYRatio": 0.54     // 盤面中心の画面Y位置(0-1)
   },
 
-  // --- 報酬抽選のレアリティ重み (大きいほど出やすい) ---
+  // --- 報酬抽選のレアリティ重み (1候補あたり。大きいほど出やすい) ---
+  //  ※ 重みは「候補1枚あたり」。同レアリティの候補が増えると、その帯の
+  //    合計出現率も上がる。呪い10種/レジェンダリー10種 追加に伴い、帯ごとの
+  //    合計出現率が暴れないよう curse/legendary は1枚あたりを下げてある。
   "rarityWeights": {
     "common":    50,
     "rare":      30,
     "epic":      16,
-    "legendary": 4,
-    "curse":     8     // 呪い: 0で抽選プールから除外。ハイリスク枠として少量出現
+    "legendary": 2,    // レジェンダリー: ラスボス撃破で解放。1枚あたりは控えめ
+    "curse":     3     // 呪い: 0で抽選プールから除外。ハイリスク枠として少量出現
   },
 
   // --- プレイヤーアビリティ ---
+  //  ※ ボス撃破報酬(氷駒/螺旋の欠片/連鎖の欠片/時の砂/鏡映/重駒)は
+  //    通常抽選に出ず、対応ボス撃破でのみ獲得。報酬として強めに設定している。
   "abilities": {
     "contemplation": { "bonusSeconds": 30.0 },          // 熟考
     "composure":     { "bonusSeconds": 15.0 },          // 平静
@@ -50,10 +67,11 @@
     "rapidThought":  { "charges": 1, "grantSeconds": 999.0 },  // 倍速思考
     "twoHands":      { "placementCount": 2 },           // 二手打ち
     "boardExpand":   { "width": 4, "height": 4 },       // 盤面拡張
-    "spiralShard":   { "charges": 2 },                  // 螺旋の欠片
-    "chainShard":    { "charges": 3 },                  // 連鎖の欠片
+    "iceTile":       { "slideDistance": 2 },            // 氷駒(ボス報酬): 滑走マス数
+    "spiralShard":   { "charges": 4 },                  // 螺旋の欠片(ボス報酬): 強化済
+    "chainShard":    { "charges": 5 },                  // 連鎖の欠片(ボス報酬): 強化済
     "immortal":      { "charges": 2 },                  // 不死
-    "sandsOfTime":   { "charges": 2, "refillSeconds": 180.0 }, // 時の砂
+    "sandsOfTime":   { "charges": 4, "refillSeconds": 180.0 }, // 時の砂(ボス報酬): 強化済
     "timeStop":      { "seconds": 9999.0 },             // 時間停止
     "cornerDominion":{ "threshold": 3 },                // 隅取り: 勝利に必要な支配隅数(3 or 4)
     "impatience":    { "placementCount": 2, "timeFactor": 0.5 } // 焦燥(呪い): 着手数/時間倍率

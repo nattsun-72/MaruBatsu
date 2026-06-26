@@ -45,6 +45,11 @@ void SoundManager_PlayBGM(SoundID id);
 void SoundManager_StopBGM();
 void SoundManager_SetBGMVolume(float volume);  // 0.0 ~ 1.0
 
+// 決着曲(勝利/敗北)の排他再生:
+//   長尺の win/lose を「現在のBGMを止めて単独で」鳴らす(対戦BGMとの被り防止)。
+//   BGM枠・BGM音量で再生され、次にシーンが PlayBGM を呼ぶと自然に置き換わる。
+void SoundManager_PlayResultTheme(SoundID id);
+
 // SE再生
 void SoundManager_PlaySE(SoundID id);
 void SoundManager_SetSEVolume(float volume);   // 0.0 ~ 1.0

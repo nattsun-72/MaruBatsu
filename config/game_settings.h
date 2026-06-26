@@ -33,6 +33,13 @@ namespace SettingsRange
 void GameSettings_Initialize();
 void GameSettings_Finalize();
 
+// 永続化 (save/settings.dat へ保存/読込)
+//  Load: 既定値で初期化済みの状態から、保存値があれば上書き適用する。
+//        全サブシステム(サウンド/Direct3D/ウィンドウ)初期化後に呼ぶこと。
+//  Save: 現在値をファイルへ書き出す (設定変更時・終了時に呼ぶ)。
+void GameSettings_Load();
+void GameSettings_Save();
+
 // 視点感度
 float GameSettings_GetSensitivity();
 void GameSettings_SetSensitivity(float value);

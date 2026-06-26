@@ -9,11 +9,14 @@
 #include "scene.h"
 #include "game.h"
 #include "title.h"
+#include "boss_reward.h"
 #include "reward.h"
 #include "result.h"
 #include "history.h"
+#include "settings_overlay.h"
 
 #include "input_manager.h"
+#include "key_logger.h"
 #include "direct3d.h"
 #include "sprite.h"
 #include "sound_manager.h"
@@ -34,6 +37,7 @@ void Scene_Initialize()
     {
     case Scene::TITLE:  Title_Initialize();  break;
     case Scene::GAME:   Game_Initialize();   break;
+    case Scene::BOSS_REWARD: BossReward_Initialize(); break;
     case Scene::REWARD: Reward_Initialize(); break;
     case Scene::RESULT: Result_Initialize(); break;
     case Scene::HISTORY: History_Initialize(); break;
@@ -48,6 +52,7 @@ void Scene_Finalize()
     {
     case Scene::TITLE:  Title_Finalize();  break;
     case Scene::GAME:   Game_Finalize();   break;
+    case Scene::BOSS_REWARD: BossReward_Finalize(); break;
     case Scene::REWARD: Reward_Finalize(); break;
     case Scene::RESULT: Result_Finalize(); break;
     case Scene::HISTORY: History_Finalize(); break;
@@ -63,10 +68,27 @@ void Scene_Update(double elapsed_time)
     // 入力状態を先に更新してから各シーンへ渡す
     InputManager_Update();
 
+    // 設定オーバーレイ: タイトル/ゲーム中に O で開閉できる。
+    // (報酬/リザルト/履歴では誤操作を避けるため開けない)
+    if ((g_Scene == Scene::TITLE || g_Scene == Scene::GAME)
+        && KeyLogger_IsTrigger(KK_O))
+    {
+        Settings::Toggle();
+    }
+
+    // オーバーレイ表示中は下層シーンを更新せず一時停止する
+    // (ゲーム中に開いても対戦状態が進まない/シーン遷移も起きない)
+    if (Settings::IsOpen())
+    {
+        Settings::Update(elapsed_time);
+        return;
+    }
+
     switch (g_Scene)
     {
     case Scene::TITLE:  Title_Update(elapsed_time);  break;
     case Scene::GAME:   Game_Update(elapsed_time);   break;
+    case Scene::BOSS_REWARD: BossReward_Update(elapsed_time); break;
     case Scene::REWARD: Reward_Update(elapsed_time); break;
     case Scene::RESULT: Result_Update(elapsed_time); break;
     case Scene::HISTORY: History_Update(elapsed_time); break;
@@ -91,11 +113,15 @@ void Scene_Draw()
     {
     case Scene::TITLE:  Title_Draw();  break;
     case Scene::GAME:   Game_Draw();   break;
+    case Scene::BOSS_REWARD: BossReward_Draw(); break;
     case Scene::REWARD: Reward_Draw(); break;
     case Scene::RESULT: Result_Draw(); break;
     case Scene::HISTORY: History_Draw(); break;
     default: break;
     }
+
+    /*--- 設定オーバーレイ (開いていれば現在シーンの上に重ねる) ---*/
+    Settings::Draw();
 }
 
 //======================================
@@ -120,4 +146,9 @@ void Scene_Change(Scene scene)
 {
     // 実際の切り替えは Scene_Refresh() まで遅延させる
     g_SceneNext = scene;
+}
+
+Scene Scene_Current()
+{
+    return g_Scene;
 }
